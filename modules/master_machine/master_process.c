@@ -3,7 +3,6 @@
 #include "daemon.h"
 #include "bsp_log.h"
 #include "robot_def.h"
-
 static Minipc_Recv_s minipc_recv_data;
 static Minipc_Send_s minipc_send_data;
 static DaemonInstance *minipc_daemon_instance;
@@ -21,7 +20,13 @@ void VisionSetAltitude(float yaw, float pitch, float roll)
 }
 void OdomSetMessage(float* gyro, float vx, float vy, float wz)
 {
+    minipc_send_data.Odom.header=0x4A;
     minipc_send_data.Odom.gyro[0]=gyro[0];
+    minipc_send_data.Odom.gyro[1]=gyro[1];
+    minipc_send_data.Odom.gyro[2]=gyro[2];
+    minipc_send_data.Odom.vx=vx;
+    minipc_send_data.Odom.vy=vy;
+    minipc_send_data.Odom.wz=wz;
 }
 static USARTInstance *minipc_usart_instance;
 
@@ -52,7 +57,7 @@ static void MiniPCOfflineCallback(void *id)
  */
 static void DecodeMinpc()
 {
-    DaemonReload(minipc_daemon_instance); // 喂狗
+    //DaemonReload(minipc_daemon_instance); // 喂狗
     get_protocol_info_vision(minipc_usart_instance->recv_buff,&minipc_recv_data);
     get_protocol_info_odom(minipc_usart_instance->recv_buff, &minipc_recv_data);
 }

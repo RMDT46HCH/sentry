@@ -111,7 +111,7 @@ void get_protocol_send_Odom_data(
     static uint16_t crc16;
     static uint16_t data_len;
 
-    data_len =  1  + 4 * 6 + 2;
+    data_len = 27;
     /*帧头部分*/
     memcpy(&tx_buf[0], &tx_data->Odom.header, sizeof(uint8_t));
     /*数据段*/
@@ -166,7 +166,7 @@ void get_protocol_info_odom(uint8_t *rx_buf,
             memcpy(&recv_data->Odom.vx, &rx_buf[1], sizeof(float));
             memcpy(&recv_data->Odom.vy, &rx_buf[5], sizeof(float));
             memcpy(&recv_data->Odom.wz, &rx_buf[9], sizeof(float));
-            recv_data->Odom.checksum = (rx_buf[date_length - 2] << 8) | rx_buf[date_length - 1];
+            recv_data->Odom.checksum = (rx_buf[10] << 8) | rx_buf[11];
         }
     }
 }
