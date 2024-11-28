@@ -194,7 +194,6 @@ static void CalHeat()
     {
         // 切换到右枪管
         Servo_Motor_FreeAngle_Set(change,130);
-        shoot_cmd_recv.shoot_rate=0;
         cal_bullet.shoot_l = 0;
         cal_bullet.shoot_r = 1;
         if(cal_bullet.shoot_heat_r > CHANGE_LIMIT)
@@ -206,7 +205,6 @@ static void CalHeat()
     {
         // 切换到左枪管
         Servo_Motor_FreeAngle_Set(change,40);
-        shoot_cmd_recv.shoot_rate=0;
         cal_bullet.shoot_l = 1;
         cal_bullet.shoot_r = 0;
         if(cal_bullet.shoot_heat_l > CHANGE_LIMIT)
