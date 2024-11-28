@@ -113,7 +113,7 @@ void get_protocol_send_Odom_data(
 
     data_len = 27;
     /*帧头部分*/
-    memcpy(&tx_buf[0], &tx_data->Odom.header, sizeof(uint8_t));
+    tx_buf[0]=tx_data->Odom.header;
     /*数据段*/
     memcpy(&tx_buf[1], &tx_data->Odom.vx, sizeof(float));
     memcpy(&tx_buf[5], &tx_data->Odom.vy, sizeof(float));

@@ -99,7 +99,7 @@ void ShootInit()
         .Channel=TIM_CHANNEL_1,
         //舵机的初始化模式和类型
         .Servo_Angle_Type=Free_Angle_mode,
-        .Servo_type=Servo180,
+        .Servo_type=Servo270,
     };
     // 设置好参数后进行初始化并保留返回的指针
     change = ServoInit(&config);
@@ -124,6 +124,7 @@ static void CalHeat()
         cal_bullet.shoot_l = 1;
         cal_bullet.shoot_r = 0;
         cal_bullet.rest_bullet = TOTAL_BULLET;
+        Servo_Motor_FreeAngle_Set(change,40);
     }
 
     // 计算实际发弹数以及剩余弹量
@@ -192,7 +193,8 @@ static void CalHeat()
     if (cal_bullet.shoot_heat_l > HEAT_LIMIT && cal_bullet.shoot_l == 1)
     {
         // 切换到右枪管
-        Servo_Motor_FreeAngle_Set(change,30);
+        Servo_Motor_FreeAngle_Set(change,130);
+        shoot_cmd_recv.shoot_rate=0;
         cal_bullet.shoot_l = 0;
         cal_bullet.shoot_r = 1;
         if(cal_bullet.shoot_heat_r > CHANGE_LIMIT)
@@ -203,7 +205,8 @@ static void CalHeat()
     else if (cal_bullet.shoot_heat_r > HEAT_LIMIT && cal_bullet.shoot_r == 1)
     {
         // 切换到左枪管
-        Servo_Motor_FreeAngle_Set(change,60);
+        Servo_Motor_FreeAngle_Set(change,40);
+        shoot_cmd_recv.shoot_rate=0;
         cal_bullet.shoot_l = 1;
         cal_bullet.shoot_r = 0;
         if(cal_bullet.shoot_heat_l > CHANGE_LIMIT)

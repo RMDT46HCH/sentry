@@ -218,13 +218,13 @@ static void SendChassisData()
  */
 static void send_judge_data()
 {
-//to 视觉
-//chassis_feedback_data.enemy_color = referee_data->GameRobotState.robot_id > 7 ? COLOR_RED : COLOR_BLUE; 
+    //to 视觉
+    //chassis_feedback_data.enemy_color = referee_data->GameRobotState.robot_id > 7 ? COLOR_RED : COLOR_BLUE; 
 
-//to 发射
-//chassis_feedback_data.bullet_speed = referee_data->GameRobotState.shooter_id2_17mm_speed_limit;
-//chassis_feedback_data.rest_heat_l = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_1_barrel_heat);
-//chassis_feedback_data.rest_heat_r = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_2_barrel_heat);
+    //to 发射
+    //chassis_feedback_data.bullet_speed = referee_data->GameRobotState.shooter_id2_17mm_speed_limit;
+    //chassis_feedback_data.rest_heat_l = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_1_barrel_heat);
+    //chassis_feedback_data.rest_heat_r = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_2_barrel_heat);
 }
 /* 机器人底盘控制核心任务 */
 void ChassisTask()

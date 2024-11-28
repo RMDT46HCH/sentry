@@ -3,7 +3,7 @@
 
 #include "bsp_usart.h"
 #include "seasky_protocol.h"
-
+#include "arm_math.h"
 #define MINIPC_RECV_SIZE 18u // 当前为固定值,36字节
 #define MINIPC_SEND_SIZE 36u
 
@@ -42,17 +42,17 @@ typedef struct
 	struct
     {
 		uint8_t header;  // 帧头，固定为0x5A
-		float yaw;       // 需要云台转动的相对 yaw 角
-		float pitch;     // 需要云台转动的相对 pitch 角
-		float deep;     // 物体距离
+		float32_t yaw;       // 需要云台转动的相对 yaw 角
+		float32_t pitch;     // 需要云台转动的相对 pitch 角
+		float32_t deep;     // 物体距离
 		uint16_t checksum; // 校验和
 	}Vision;
 	struct
 	{
 		uint8_t header;  // 帧头，固定为0x5A
-		float vx;       // 
-		float vy;     // 
-		float wz;      // 
+		float32_t vx;       // 
+		float32_t vy;     // 
+		float32_t wz;      // 
 		uint16_t checksum; // 校验和
 	}Odom;
 } __attribute__((packed)) Minipc_Recv_s;
