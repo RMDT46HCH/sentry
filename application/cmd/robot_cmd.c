@@ -162,7 +162,7 @@ static void VisionJudge()
         DataLebel.t_shoot++;
         if(minipc_recv_data->Vision.deep!=0)
         DataLebel.t_shoot=0;
-        if(DataLebel.t_shoot>=600)
+        if(DataLebel.t_shoot>=100)
         {
             DataLebel.t_shoot=0;
             DataLebel.vision_flag=0;
@@ -189,7 +189,7 @@ static void ChassisRC()
     {
         chassis_cmd_send.chassis_mode=CHASSIS_FOLLOW_GIMBAL_YAW;
     }
-    else
+    if (switch_is_up(rc_data[TEMP].rc.switch_left))
         chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
 }
 
@@ -202,7 +202,6 @@ static void ShootRC()
         shoot_cmd_send.load_mode=LOAD_STOP;
         else
         shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
-
     }
     else
     {
@@ -227,9 +226,13 @@ static void GimbalAC()
         gimbal_cmd_send.pitch =20*abs(sin(2.5*DataLebel.t_pitch));
     }
     else
-    {
-        gimbal_cmd_send.yaw-=0.007f*minipc_recv_data->Vision.yaw;   //往右获得的yaw是减
-        gimbal_cmd_send.pitch -= 0.009f*minipc_recv_data->Vision.pitch;
+    {    
+        if(abs(minipc_recv_data->Vision.pitch)<400&&abs(minipc_recv_data->Vision.yaw)<400)
+        {
+            gimbal_cmd_send.yaw-=0.014f*minipc_recv_data->Vision.yaw;   //往右获得的yaw是减
+            gimbal_cmd_send.pitch -= 0.009f*minipc_recv_data->Vision.pitch;
+        }
+
     }
 }
 
@@ -264,6 +267,7 @@ static void AnythingStop()
     shoot_cmd_send.load_mode = LOAD_STOP;
     AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
 }
+
 /**
  * @brief 
  *
