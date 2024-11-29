@@ -159,7 +159,7 @@ void get_protocol_info_odom(uint8_t *rx_buf,
     if (protocol_heade_Check(&pro, rx_buf)==2) 
     {
         date_length = OFFSET_BYTE + pro.header.data_length;
-        //if (CRC16_Check_Sum(rx_buf, date_length)) 
+        if (CRC16_Check_Sum(rx_buf, date_length)) 
         {
             // 将接收到的数据复制到Odom_Recv_s结构体中
             recv_data->Odom.header = rx_buf[0];

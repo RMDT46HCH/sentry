@@ -135,6 +135,7 @@ static void BasicFunctionSet()
     shoot_cmd_send.friction_mode = FRICTION_ON;
     shoot_cmd_send.shoot_rate=8;
     shoot_cmd_send.bullet_speed=SMALL_AMU_30;
+    shoot_cmd_send.dead_time = 600;
 }
 /**
  * @brief 判断视觉有没有发信息，但因为现在发信息发的太慢了，头一直想走，所以给视觉3s的机会
@@ -158,6 +159,8 @@ static void VisionJudge()
     }
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
+        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+
         DataLebel.fire_flag=0;
         DataLebel.t_shoot++;
         if(minipc_recv_data->Vision.deep!=0)
@@ -166,7 +169,6 @@ static void VisionJudge()
         {
             DataLebel.t_shoot=0;
             DataLebel.vision_flag=0;
-            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
 }
@@ -197,19 +199,18 @@ static void ShootRC()
 {
     if(rc_data->rc.dial>200)
     {
-        shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
         if(shoot_fetch_data.over_heat_flag==1)
         shoot_cmd_send.load_mode=LOAD_STOP;
         else
         shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
     }
+    else if (rc_data->rc.dial<-200)
+    {
+        shoot_cmd_send.load_mode=LOAD_REVERSE;
+    }
     else
     {
         shoot_cmd_send.load_mode=LOAD_STOP;
-        if (switch_is_mid(rc_data[TEMP].rc.switch_left))
-        {
-            shoot_cmd_send.load_mode=LOAD_REVERSE;
-        }
     }
 }
 /**
@@ -247,11 +248,23 @@ static void ShootAC()
 {
     if(DataLebel.fire_flag==1)
     {
+        shoot_cmd_send.fire_mode=AUTO_FIRE;
         shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
+
+        if (shoot_fetch_data.loader_speed_aps == 0)
+        {
+            static float last_check_time = 0; 
+            if (DWT_GetTimeline_s() - last_check_time > 1) 
+            {
+                shoot_cmd_send.load_mode = LOAD_REVERSE; 
+                last_check_time = DWT_GetTimeline_s();
+            }
+        }
     }
     else
     {
         shoot_cmd_send.load_mode=LOAD_STOP;
+        shoot_cmd_send.fire_mode=NO_FIRE;
     }
 }
 /**

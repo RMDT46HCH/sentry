@@ -28,8 +28,7 @@
 #define TOTAL_BULLET 750             //总载弹量
 #define COOLING_VAL 80
 #define HEAT_LIMIT 380
-#define RECOVER_HEAT_LIMIT 200
-#define CHANGE_LIMIT 300
+#define RECOVER_HEAT_LIMIT 190
 
 // 机器人底盘修改的参数,单位为mm(毫米)
 #define WHEEL_BASE 390              // 纵向轴距(前进后退方向)
@@ -111,9 +110,20 @@ typedef enum
 {
     LOAD_STOP = 0,  // 停止发射
     LOAD_REVERSE,   // 反转
-
     LOAD_BURSTFIRE, // 连发
 } loader_mode_e;
+
+typedef enum
+{
+    LEFT_BARREL_ON=0,
+    RIGHT_BARREL_ON,
+}barrel_mode_e;
+
+typedef enum
+{
+	NO_FIRE = 0,
+	AUTO_FIRE = 1,
+} Fire_Mode_e;
 
 // 功率限制（哨兵的是100w，感觉可以不用）
 typedef struct
@@ -126,6 +136,7 @@ typedef struct
     float t_shoot;
     float t_pitch;
     float t_cmd_error;
+    float t_shoot_error;
     uint8_t vision_flag;
     uint8_t shoot_flag;
     uint8_t cmd_error_flag;
@@ -135,6 +146,7 @@ typedef struct
 
 typedef struct
 {
+    barrel_mode_e barrel_mode;
     float last_loader_total_angle;//用于储存上一次计算时角度
     float last_loader_total_heat_angle;//用于储存上一次计算热量时用到的角度
     float loader_total_angle;//当前角度
@@ -147,8 +159,8 @@ typedef struct
     //读取裁判系统时间间隔
     float last_time;
     float last_bullet_speed;
-    uint8_t shoot_l;
-    uint8_t shoot_r;
+    uint8_t over_shoot_l;
+    uint8_t over_shoot_r;
 }cal_bullet_t;
 /* ----------------CMD应用发布的控制数据,应当由gimbal/chassis/shoot订阅---------------- */
 /**
@@ -190,7 +202,8 @@ typedef struct
     float shoot_rate; // 连续发射的射频,unit per s,发/秒
     float fric_rate;
     float bullet_real_speed;
-
+    Fire_Mode_e fire_mode;
+    float dead_time;
 } Shoot_Ctrl_Cmd_s;
 
 /* ----------------gimbal/shoot/chassis发布的反馈数据----------------*/
