@@ -46,6 +46,7 @@ static Shoot_Upload_Data_s shoot_fetch_data; // 从发射获取的反馈信息
 
 static Robot_Status_e robot_state; // 机器人整体工作状态
 static DataLebel_t DataLebel;
+static uint8_t reverse_flag;
 
 #include "can_comm.h"
 
@@ -246,26 +247,39 @@ static void ChassisAC()
 
 static void ShootAC()
 {
-    if(DataLebel.fire_flag==1)
+    // if(DataLebel.fire_flag==1)
+    if (rc_data->rc.dial > 200)
     {
-        shoot_cmd_send.fire_mode=AUTO_FIRE;
-        shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
-
-        if (shoot_fetch_data.loader_speed_aps == 0)
+        // 根据是否过热设置加载模式
+        if (shoot_fetch_data.over_heat_flag == 1)
         {
-            static float last_check_time = 0; 
-            if (DWT_GetTimeline_s() - last_check_time > 1) 
+            shoot_cmd_send.load_mode = LOAD_STOP;
+        }
+        else
+        {
+            if(shoot_fetch_data.over_heat_flag != 1&&reverse_flag==0)
             {
-                shoot_cmd_send.load_mode = LOAD_REVERSE; 
-                last_check_time = DWT_GetTimeline_s();
+                shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
+            }
+            // 如果加载器速度为500，检查是否需要切换到反向加载
+            if (abs(shoot_fetch_data.loader_speed_aps) <= 500 && shoot_cmd_send.load_mode != LOAD_REVERSE)
+            {
+                reverse_flag=1;
+                // 设置为反向加载
+                shoot_cmd_send.load_mode = LOAD_REVERSE;
+            }
+            else if(abs(shoot_fetch_data.loader_speed_aps) > 1000)
+            {
+                reverse_flag=0;                
             }
         }
     }
-    else
-    {
-        shoot_cmd_send.load_mode=LOAD_STOP;
-        shoot_cmd_send.fire_mode=NO_FIRE;
-    }
+
+    // else
+    // {
+    //     shoot_cmd_send.load_mode=LOAD_STOP;
+    //     shoot_cmd_send.fire_mode=NO_FIRE;
+    // }
 }
 /**
  * @brief 停止
@@ -297,7 +311,7 @@ static void RemoteDataDeal()
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_right)) 
     {
-        GimbalAC();
+        GimbalRC();
         // //等巡航搞完改为ChassisAC();
          ChassisRC();
          ShootAC();

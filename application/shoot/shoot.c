@@ -248,11 +248,8 @@ static void ShootLoaderSet()
         break;
     // 拨盘反转,对速度闭环（待测试）
     case LOAD_REVERSE:
-            DJIMotorOuterLoop(loader, ANGLE_LOOP);// 切换到角度环
-            loader_set_angle = loader->measure.total_angle + ONE_BULLET_DELTA_ANGLE*REDUCTION_RATIO_LOADER; // 控制量增加一发弹丸的角度
-            DJIMotorSetRef(loader, loader_set_angle); 
-            hibernate_time = DWT_GetTimeline_ms();                                              // 记录触发指令的时间
-            dead_time = shoot_cmd_recv.dead_time;  
+            DJIMotorOuterLoop(loader, SPEED_LOOP);// 切换到角度环
+            DJIMotorSetRef(loader, -shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 8); 
         break;
     default:
         while (1)
@@ -296,8 +293,10 @@ void ShootTask()
     ShootLoaderSet();
     //射速设定
     ShootSpeedSet();
+    if (hibernate_time + dead_time > DWT_GetTimeline_ms())
+    return;
     //计算热量并限制
-    //CalHeat();
+    CalHeat();
     //给发布中心电机实际情况，从而调节拨盘电机的模式
     SendShootData();
     // 反馈数据,用于卡弹反馈（后续再加个模块离线）
