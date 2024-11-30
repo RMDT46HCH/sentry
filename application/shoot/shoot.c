@@ -15,8 +15,6 @@ static Subscriber_t *shoot_sub;
 static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信息
 static cal_bullet_t cal_bullet;
 static ServoInstance *change;
-static float hibernate_time = 0, dead_time = 0;
-static float loader_set_angle = 0;
 
 void ShootInit()
 {
@@ -293,8 +291,6 @@ void ShootTask()
     ShootLoaderSet();
     //射速设定
     ShootSpeedSet();
-    if (hibernate_time + dead_time > DWT_GetTimeline_ms())
-    return;
     //计算热量并限制
     CalHeat();
     //给发布中心电机实际情况，从而调节拨盘电机的模式
