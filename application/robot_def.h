@@ -7,12 +7,12 @@
 #include "stdint.h"
 #include "referee_protocol.h"
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
-//#define CHASSIS_BOARD //底盘板
-#define GIMBAL_BOARD  //云台板
+#define CHASSIS_BOARD //底盘板
+//#define GIMBAL_BOARD  //云台板
 
- #define VISION_USE_UART // 使用串口发送视觉数据
+#define VISION_USE_UART // 使用串口发送视觉数据
 
- #define ODOM_USE_UART // 使用串口发送巡航数据
+#define ODOM_USE_UART // 使用串口发送巡航数据
 
 /* 机器人重要参数定义,注意根据不同机器人进行修改,浮点数需要以.0或f结尾,无符号以u结尾 */
 // 云台参数
@@ -220,6 +220,7 @@ typedef struct
      float real_vy;
      float real_wz;
      uint16_t remain_HP;
+     float test;
      //发给视觉的数据
     Enemy_Color_e enemy_color;   // 0 for blue, 1 for red
     Vision_Work_Mode_e vision_work_mode;
