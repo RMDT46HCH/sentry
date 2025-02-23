@@ -18,15 +18,30 @@ void VisionSetAltitude(float yaw, float pitch, float roll)
     minipc_send_data.Vision.pitch = pitch;
     minipc_send_data.Vision.roll = roll;
 }
-void OdomSetMessage(float* gyro, float vx, float vy, float wz)
+void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
+					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
+					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
+                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
+					)
 {
-    minipc_send_data.Odom.header=0x4A;
-    minipc_send_data.Odom.gyro[0]=gyro[0];
-    minipc_send_data.Odom.gyro[1]=gyro[1];
-    minipc_send_data.Odom.gyro[2]=gyro[2];
-    minipc_send_data.Odom.vx=vx;
-    minipc_send_data.Odom.vy=vy;
-    minipc_send_data.Odom.wz=wz;
+    minipc_send_data.Nav.header=0x4A;
+    minipc_send_data.Nav.vx=vx;
+    minipc_send_data.Nav.vy=vy;
+    minipc_send_data.Nav.yaw=yaw;
+
+    minipc_send_data.Nav.enemy_hero_HP=enermy_hero_HP;
+    minipc_send_data.Nav.enemy_infantry_HP=enermy_infantry_HP;
+    minipc_send_data.Nav.enemy_sentry_HP=enermy_sentry_HP;
+
+    minipc_send_data.Nav.self_sentry_HP=self_sentry_HP;
+    minipc_send_data.Nav.self_infantry_HP=self_infantry_HP;
+    minipc_send_data.Nav.self_hero_HP=self_hero_HP;
+
+    minipc_send_data.Nav.remain_bullet=remain_bullet;
+    minipc_send_data.Nav.occupation =occupation;
+
+    minipc_send_data.Nav.tail1=0x2B;
+
 }
 static USARTInstance *minipc_usart_instance;
 

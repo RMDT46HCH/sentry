@@ -146,8 +146,11 @@ void VisionSetAltitude(float yaw, float pitch, float roll);
  * @param vx
  * @param vy
  */
-void OdomSetMessage(float* gyro, float vx, float vy, float wz);
-
+void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
+					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
+					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
+                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
+					)
 
 /*更新发送数据帧，并计算发送数据帧长度*/
 void get_protocol_send_Vision_data(
