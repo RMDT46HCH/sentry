@@ -34,7 +34,6 @@ static float sin_theta, cos_theta;//麦轮解算用
 static float vx,vy;//获取车体信息要用到的中间变量
 
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
-static attitude_t *chassis_IMU_data;     // 云台IMU数据
 static float cnt=0;
 static float chassis_power_buff= 1;
 static float rotate_speed_buff = 1;
@@ -47,7 +46,6 @@ static float rotate_speed_buff = 1;
 void ChassisInit()
 {
     /***************************IMU_INIT******************************/
-    chassis_IMU_data = INS_Init(); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
 
     /***************************MOTOR_INIT******************************/
     // 底盘电机的初始化，包括什么通信、什么id、pid及电机安装是正装还是反装（相当于给最终输出值添负号）及型号
@@ -200,7 +198,6 @@ static void LimitChassisOutput()
 static void SendChassisData()
 {
     //to 巡航
-    chassis_feedback_data.chassis_imu_data=*chassis_IMU_data;
     vx = (motor_lf->measure.speed_aps +motor_lb->measure.speed_aps - motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000 ;
     vy = (-motor_lf->measure.speed_aps +motor_lb->measure.speed_aps + motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000  ;
     chassis_feedback_data.real_vx = vx * cos_theta + vy * sin_theta;
