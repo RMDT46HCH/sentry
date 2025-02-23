@@ -39,9 +39,8 @@ void OdomSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 
     minipc_send_data.Odom.remain_bullet=remain_bullet;
     minipc_send_data.Odom.occupation =occupation;
-
+    minipc_send_data.Odom.game_progress=game_progress;
     minipc_send_data.Odom.tail1=0x2B;
-
 }
 static USARTInstance *minipc_usart_instance;
 
