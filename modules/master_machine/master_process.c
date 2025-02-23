@@ -18,29 +18,29 @@ void VisionSetAltitude(float yaw, float pitch, float roll)
     minipc_send_data.Vision.pitch = pitch;
     minipc_send_data.Vision.roll = roll;
 }
-void OdomSetMessage(float vx, float vy, float yaw,uint8_t occupation,
+void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
 					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
                     uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
 					)
 {
-    minipc_send_data.Odom.header=0x4A;
-    minipc_send_data.Odom.vx=vx;
-    minipc_send_data.Odom.vy=vy;
-    minipc_send_data.Odom.yaw=yaw;
+    minipc_send_data.Nav.header=0x4A;
+    minipc_send_data.Nav.vx=vx;
+    minipc_send_data.Nav.vy=vy;
+    minipc_send_data.Nav.yaw=yaw;
 
-    minipc_send_data.Odom.enemy_hero_HP=enermy_hero_HP;
-    minipc_send_data.Odom.enemy_infantry_HP=enermy_infantry_HP;
-    minipc_send_data.Odom.enemy_sentry_HP=enermy_sentry_HP;
+    minipc_send_data.Nav.enemy_hero_HP=enermy_hero_HP;
+    minipc_send_data.Nav.enemy_infantry_HP=enermy_infantry_HP;
+    minipc_send_data.Nav.enemy_sentry_HP=enermy_sentry_HP;
 
-    minipc_send_data.Odom.self_sentry_HP=self_sentry_HP;
-    minipc_send_data.Odom.self_infantry_HP=self_infantry_HP;
-    minipc_send_data.Odom.self_hero_HP=self_hero_HP;
+    minipc_send_data.Nav.self_sentry_HP=self_sentry_HP;
+    minipc_send_data.Nav.self_infantry_HP=self_infantry_HP;
+    minipc_send_data.Nav.self_hero_HP=self_hero_HP;
 
-    minipc_send_data.Odom.remain_bullet=remain_bullet;
-    minipc_send_data.Odom.occupation =occupation;
-    minipc_send_data.Odom.game_progress=game_progress;
-    minipc_send_data.Odom.tail1=0x2B;
+    minipc_send_data.Nav.remain_bullet=remain_bullet;
+    minipc_send_data.Nav.occupation =occupation;
+    minipc_send_data.Nav.game_progress=game_progress;
+    minipc_send_data.Nav.tail1=0x2B;
 }
 static USARTInstance *minipc_usart_instance;
 
@@ -110,7 +110,7 @@ void SendMinipcData()
     static uint16_t tx_len;
     // 将数据转化为seasky协议的数据包
     get_protocol_send_Vision_data(&minipc_send_data, send_buff, &tx_len);
-    get_protocol_send_Odom_data(&minipc_send_data, send_buff, &tx_len);
+    get_protocol_send_Nav_data(&minipc_send_data, send_buff, &tx_len);
 
     USARTSend(minipc_usart_instance, send_buff, tx_len, USART_TRANSFER_DMA);
 }

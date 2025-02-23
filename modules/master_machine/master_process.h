@@ -54,7 +54,7 @@ typedef struct
 		float32_t vy;     // 
 		float32_t wz;      // 
 		uint16_t checksum; // 校验和
-	}Odom;
+	}Nav;
 } __attribute__((packed)) Minipc_Recv_s;
 
 typedef enum
@@ -108,7 +108,7 @@ typedef struct
 		uint8_t occupation;
 		uint8_t game_progress;
 		uint8_t tail1; 
-	}Odom;
+	}Nav;
 } __attribute__((packed)) Minipc_Send_s;
 
 
@@ -155,7 +155,7 @@ void VisionSetAltitude(float yaw, float pitch, float roll);
  * @param vx
  * @param vy
  */
-void OdomSetMessage(float vx, float vy, float yaw,uint8_t occupation,
+void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
 					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
                     uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
@@ -168,7 +168,7 @@ void get_protocol_send_Vision_data(
                             uint16_t *tx_buf_len) ;   // 待发送的数据帧长度
 
 /*更新发送数据帧，并计算发送数据帧长度*/
-void get_protocol_send_Odom_data(
+void get_protocol_send_Nav_data(
                             Minipc_Send_s *tx_data,          // 待发送的float数据
                             uint8_t *tx_buf,         // 待发送的数据帧
                             uint16_t *tx_buf_len);    // 待发送的数据帧长度

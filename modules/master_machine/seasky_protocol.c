@@ -103,7 +103,7 @@ void get_protocol_send_Vision_data(
     //tx_buf[data_len + 6] = crc16 & 0xff;
     //tx_buf[data_len + 7] = (crc16 >> 8) & 0xff;
 }
-void get_protocol_send_Odom_data(
+void get_protocol_send_Nav_data(
                             Minipc_Send_s *tx_data,          
                             uint8_t *tx_buf,         // 待发送的数据帧
                             uint16_t *tx_buf_len)    // 待发送的数据帧长度
@@ -111,19 +111,29 @@ void get_protocol_send_Odom_data(
     static uint16_t crc16;
     static uint16_t data_len;
 
-    data_len = 27;
+    data_len = 33;
     /*帧头部分*/
-    tx_buf[0]=tx_data->Odom.header;
+    tx_buf[0]=tx_data->Nav.header;
     /*数据段*/
-    memcpy(&tx_buf[1], &tx_data->Odom.vx, sizeof(float));
-    memcpy(&tx_buf[5], &tx_data->Odom.vy, sizeof(float));
-    memcpy(&tx_buf[9], &tx_data->Odom.yaw, sizeof(float));
+    memcpy(&tx_buf[1], &tx_data->Nav.vx, sizeof(float));
+    memcpy(&tx_buf[5], &tx_data->Nav.vy, sizeof(float));
+    memcpy(&tx_buf[9], &tx_data->Nav.yaw, sizeof(float));
 
+    memcpy(&tx_buf[13], &tx_data->Nav.self_sentry_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[15], &tx_data->Nav.self_hero_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[17],  &tx_data->Nav.self_infantry_HP, sizeof(uint16_t));
 
-    /*整包校验*/
-    crc16 = crc_16(&tx_buf[0], data_len - 2); // 不包括最后两个字节的校验和
-    tx_buf[data_len - 2] = crc16 & 0xff; // 低位在前
-    tx_buf[data_len - 1] = (crc16 >> 8) & 0xff; // 高位在后
+    memcpy(&tx_buf[19], &tx_data->Nav.enemy_sentry_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[21], &tx_data->Nav.enemy_hero_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[23],  &tx_data->Nav.enemy_infantry_HP, sizeof(uint16_t));
+
+    memcpy(&tx_buf[25], &tx_data->Nav.remain_time, sizeof(uint16_t));
+    memcpy(&tx_buf[27], &tx_data->Nav.remain_bullet, sizeof(uint16_t));
+    
+    memcpy(&tx_buf[29],  &tx_data->Nav.game_progress, sizeof(uint8_t));
+    memcpy(&tx_buf[30],  &tx_data->Nav.occupation, sizeof(uint8_t));
+
+    tx_buf[31]=tx_data->Nav.tail1;
     *tx_buf_len = data_len ;
 }
 /*
@@ -141,7 +151,7 @@ void get_protocol_info_vision(uint8_t *rx_buf,
         date_length = OFFSET_BYTE + pro.header.data_length;
         //if (CRC16_Check_Sum(rx_buf, date_length)) {
             // 将接收到的数据复制到Vision_Recv_s结构体中
-            recv_data->Odom.header = rx_buf[0];
+            recv_data->Nav.header = rx_buf[0];
             memcpy(&recv_data->Vision.yaw, &rx_buf[1], sizeof(float));
             memcpy(&recv_data->Vision.pitch, &rx_buf[5], sizeof(float));
             memcpy(&recv_data->Vision.deep, &rx_buf[9], sizeof(float));
@@ -159,12 +169,12 @@ void get_protocol_info_odom(uint8_t *rx_buf,
         date_length = OFFSET_BYTE + pro.header.data_length;
         //if (CRC16_Check_Sum(rx_buf, date_length)) 
         {
-            // 将接收到的数据复制到Odom_Recv_s结构体中
-            recv_data->Odom.header = rx_buf[0];
-            memcpy(&recv_data->Odom.vx, &rx_buf[1], sizeof(float));
-            memcpy(&recv_data->Odom.vy, &rx_buf[5], sizeof(float));
-            memcpy(&recv_data->Odom.wz, &rx_buf[9], sizeof(float));
-            recv_data->Odom.checksum = (rx_buf[10] << 8) | rx_buf[11];
+            // 将接收到的数据复制到Nav_Recv_s结构体中
+            recv_data->Nav.header = rx_buf[0];
+            memcpy(&recv_data->Nav.vx, &rx_buf[1], sizeof(float));
+            memcpy(&recv_data->Nav.vy, &rx_buf[5], sizeof(float));
+            memcpy(&recv_data->Nav.wz, &rx_buf[9], sizeof(float));
+            recv_data->Nav.checksum = (rx_buf[10] << 8) | rx_buf[11];
         }
     }
 }
