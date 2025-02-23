@@ -253,7 +253,7 @@ void ChassisTask()
 
     // 根据裁判系统的反馈数据设定闭环参考值
     LimitChassisOutput();
-
+    send_judge_data();
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
      
