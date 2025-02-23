@@ -207,11 +207,17 @@ typedef struct
 typedef struct
 {
     //发给巡航的数据
-     attitude_t chassis_imu_data;
-     float real_vx;
-     float real_vy;
-     float real_wz;
-     uint16_t remain_HP;
+    attitude_t chassis_imu_data;
+    float real_vx;
+    float real_vy;
+    float real_wz;
+    uint16_t remain_HP;
+    uint16_t self_hero_HP;
+    uint16_t self_infantry_HP;
+    uint16_t enemy_hero_HP;
+    uint16_t enemy_sentry_HP;
+    uint16_t enemy_infantry_HP;
+    uint16_t remain_time;
      //发给视觉的数据
     Enemy_Color_e enemy_color;   // 0 for blue, 1 for red
     Vision_Work_Mode_e vision_work_mode;
@@ -219,6 +225,8 @@ typedef struct
     uint8_t rest_heat;           // 剩余枪口热量
     Bullet_Speed_e bullet_speed; // 弹速限制
     uint8_t cmd_error_flag;
+    uint8_t Occupation;
+    uint8_t game_progress;
 } Chassis_Upload_Data_s;
 
 
