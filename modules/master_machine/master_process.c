@@ -40,7 +40,7 @@ void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
     minipc_send_data.Nav.remain_time=remain_time;
     minipc_send_data.Nav.remain_bullet=remain_bullet;
     minipc_send_data.Nav.occupation =occupation;
-    minipc_send_data.Nav.game_progress=remain_bullet;
+    minipc_send_data.Nav.game_progress=game_progress;
     minipc_send_data.Nav.tail1=0x2B;
 }
 static USARTInstance *minipc_usart_instance;

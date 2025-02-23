@@ -106,7 +106,7 @@ typedef struct
 		uint16_t remain_time;
 		uint16_t remain_bullet;
 		uint8_t occupation;
-		uint16_t game_progress;
+		uint8_t game_progress;
 		uint8_t tail1; 
 	}Nav;
 } __attribute__((packed)) Minipc_Send_s;

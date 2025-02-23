@@ -111,7 +111,7 @@ void get_protocol_send_Nav_data(
     static uint16_t crc16;
     static uint16_t data_len;
 
-    data_len = 33;
+    data_len = 32;
     /*帧头部分*/
     tx_buf[0]=tx_data->Nav.header;
     /*数据段*/
@@ -130,10 +130,10 @@ void get_protocol_send_Nav_data(
     memcpy(&tx_buf[25], &tx_data->Nav.remain_time, sizeof(uint16_t));
     memcpy(&tx_buf[27], &tx_data->Nav.remain_bullet, sizeof(uint16_t));
     
-    memcpy(&tx_buf[29],  &tx_data->Nav.game_progress, sizeof(uint16_t));
-    memcpy(&tx_buf[31],  &tx_data->Nav.occupation, sizeof(uint8_t));
+    memcpy(&tx_buf[29],  &tx_data->Nav.game_progress, sizeof(uint8_t));
+    memcpy(&tx_buf[30],  &tx_data->Nav.occupation, sizeof(uint8_t));
 
-    tx_buf[32]=tx_data->Nav.tail1;
+    tx_buf[31]=tx_data->Nav.tail1;
     *tx_buf_len = data_len ;
 }
 /*
