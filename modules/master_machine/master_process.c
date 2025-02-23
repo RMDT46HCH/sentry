@@ -74,7 +74,7 @@ static void DecodeMinpc()
 {
     //DaemonReload(minipc_daemon_instance); // 喂狗
     get_protocol_info_vision(minipc_usart_instance->recv_buff,&minipc_recv_data);
-    get_protocol_info_odom(minipc_usart_instance->recv_buff, &minipc_recv_data);
+    get_protocol_info_nav(minipc_usart_instance->recv_buff, &minipc_recv_data);
 }
 
 Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle)
@@ -111,7 +111,7 @@ void SendMinipcData()
     static uint16_t tx_len;
     // 将数据转化为seasky协议的数据包
     get_protocol_send_Vision_data(&minipc_send_data, send_buff, &tx_len);
-    get_protocol_send_Odom_data(&minipc_send_data, send_buff, &tx_len);
+    get_protocol_send_Nav_data(&minipc_send_data, send_buff, &tx_len);
 
     USARTSend(minipc_usart_instance, send_buff, tx_len, USART_TRANSFER_DMA);
 }

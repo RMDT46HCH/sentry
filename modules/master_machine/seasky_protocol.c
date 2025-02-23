@@ -47,7 +47,7 @@ static uint8_t protocol_heade_Check(protocol_rm_struct *pro, uint8_t *rx_buf)
         pro->header.sof = rx_buf[0]; 
         return 1;
     }
-    if (rx_buf[0] == ODOM_CMD_ID)
+    if (rx_buf[0] == NAV_CMD_ID)
     {
         pro->header.sof = rx_buf[0];
         return 2;
@@ -103,7 +103,7 @@ void get_protocol_send_Vision_data(
     //tx_buf[data_len + 6] = crc16 & 0xff;
     //tx_buf[data_len + 7] = (crc16 >> 8) & 0xff;
 }
-void get_protocol_send_Odom_data(
+void get_protocol_send_Nav_data(
                             Minipc_Send_s *tx_data,          
                             uint8_t *tx_buf,         // 待发送的数据帧
                             uint16_t *tx_buf_len)    // 待发送的数据帧长度
@@ -113,14 +113,14 @@ void get_protocol_send_Odom_data(
 
     data_len = 27;
     /*帧头部分*/
-    tx_buf[0]=tx_data->Odom.header;
+    tx_buf[0]=tx_data->Nav.header;
     /*数据段*/
-    memcpy(&tx_buf[1], &tx_data->Odom.vx, sizeof(float));
-    memcpy(&tx_buf[5], &tx_data->Odom.vy, sizeof(float));
-    memcpy(&tx_buf[9], &tx_data->Odom.wz, sizeof(float));
-    memcpy(&tx_buf[13], &tx_data->Odom.gyro[0], sizeof(float));
-    memcpy(&tx_buf[17], &tx_data->Odom.gyro[1], sizeof(float));
-    memcpy(&tx_buf[21],  &tx_data->Odom.gyro[2], sizeof(float));
+    memcpy(&tx_buf[1], &tx_data->Nav.vx, sizeof(float));
+    memcpy(&tx_buf[5], &tx_data->Nav.vy, sizeof(float));
+    memcpy(&tx_buf[9], &tx_data->Nav.wz, sizeof(float));
+    memcpy(&tx_buf[13], &tx_data->Nav.gyro[0], sizeof(float));
+    memcpy(&tx_buf[17], &tx_data->Nav.gyro[1], sizeof(float));
+    memcpy(&tx_buf[21],  &tx_data->Nav.gyro[2], sizeof(float));
 
     /*整包校验*/
     crc16 = crc_16(&tx_buf[0], data_len - 2); // 不包括最后两个字节的校验和
@@ -143,7 +143,7 @@ void get_protocol_info_vision(uint8_t *rx_buf,
         date_length = OFFSET_BYTE + pro.header.data_length;
         //if (CRC16_Check_Sum(rx_buf, date_length)) {
             // 将接收到的数据复制到Vision_Recv_s结构体中
-            recv_data->Odom.header = rx_buf[0];
+            recv_data->Nav.header = rx_buf[0];
             memcpy(&recv_data->Vision.yaw, &rx_buf[1], sizeof(float));
             memcpy(&recv_data->Vision.pitch, &rx_buf[5], sizeof(float));
             memcpy(&recv_data->Vision.deep, &rx_buf[9], sizeof(float));
@@ -161,12 +161,12 @@ void get_protocol_info_odom(uint8_t *rx_buf,
         date_length = OFFSET_BYTE + pro.header.data_length;
         //if (CRC16_Check_Sum(rx_buf, date_length)) 
         {
-            // 将接收到的数据复制到Odom_Recv_s结构体中
-            recv_data->Odom.header = rx_buf[0];
-            memcpy(&recv_data->Odom.vx, &rx_buf[1], sizeof(float));
-            memcpy(&recv_data->Odom.vy, &rx_buf[5], sizeof(float));
-            memcpy(&recv_data->Odom.wz, &rx_buf[9], sizeof(float));
-            recv_data->Odom.checksum = (rx_buf[10] << 8) | rx_buf[11];
+            // 将接收到的数据复制到Nav_Recv_s结构体中
+            recv_data->Nav.header = rx_buf[0];
+            memcpy(&recv_data->Nav.vx, &rx_buf[1], sizeof(float));
+            memcpy(&recv_data->Nav.vy, &rx_buf[5], sizeof(float));
+            memcpy(&recv_data->Nav.wz, &rx_buf[9], sizeof(float));
+            recv_data->Nav.checksum = (rx_buf[10] << 8) | rx_buf[11];
         }
     }
 }

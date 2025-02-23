@@ -168,7 +168,7 @@ void get_protocol_send_Vision_data(
                             uint16_t *tx_buf_len) ;   // 待发送的数据帧长度
 
 /*更新发送数据帧，并计算发送数据帧长度*/
-void get_protocol_send_Odom_data(
+void get_protocol_send_Nav_data(
                             Minipc_Send_s *tx_data,          // 待发送的float数据
                             uint8_t *tx_buf,         // 待发送的数据帧
                             uint16_t *tx_buf_len);    // 待发送的数据帧长度
@@ -176,7 +176,7 @@ void get_protocol_send_Odom_data(
 void get_protocol_info_vision(uint8_t *rx_buf, 
                            Minipc_Recv_s *recv_data);
 
-void get_protocol_info_odom(uint8_t *rx_buf, 
+void get_protocol_info_nav(uint8_t *rx_buf, 
                            Minipc_Recv_s *recv_data);
 
 

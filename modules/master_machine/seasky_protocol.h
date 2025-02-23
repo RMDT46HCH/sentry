@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include "master_process.h"
 #define PROTOCOL_CMD_ID 0x5A
-#define ODOM_CMD_ID 0xA4
+#define NAV_CMD_ID 0xA4
 #define SEND_VISION_ID 0xA5
-#define SEND_ODOM_ID 0x4A
+#define SEND_NAV_ID 0x4A
 
 #define OFFSET_BYTE 8 // 出数据段外，其他部分所占字节数
 

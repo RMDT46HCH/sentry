@@ -238,8 +238,8 @@ static void GimbalAC()
 
 static void ChassisAC()
 {
-    chassis_cmd_send.vx=minipc_recv_data->Odom.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
-    chassis_cmd_send.vy=minipc_recv_data->Odom.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
+    chassis_cmd_send.vx=minipc_recv_data->Nav.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
+    chassis_cmd_send.vy=minipc_recv_data->Nav.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
     chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
 }
 
