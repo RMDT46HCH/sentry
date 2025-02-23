@@ -38,7 +38,8 @@
         "bsp_usb.h": "c",
         "step_motor.h": "c",
         "ht04.h": "c",
-        "rm_referee.h": "c"
+        "rm_referee.h": "c",
+        "cmsis_os.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "cortex-debug.armToolchainPath": "C:\\USERS\\ADMINISTRATOR\\GCC-ARM-NONE-EABI-10.3-2021.10-WIN32\\ARM-GNU-TOOLCHIAN\\BIN",

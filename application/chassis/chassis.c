@@ -9,11 +9,12 @@
 #include "arm_math.h"
 #include "buzzer.h"
 #include "rm_referee.h"
+#include "referee_UI.h"
+#include "referee_task.h"
 
 /* 根据robot_def.h中的macro自动计算的参数 */
 #define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
 #define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
-#define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
 
 /* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
  // 使用板载IMU获取底盘转动角速度（但初始化pid那里写的会很乱，不适合代码的可读性）
@@ -35,6 +36,7 @@ static float chassis_vx, chassis_vy;     // 将云台系的速度投影到底盘
 static float vt_lf, vt_rf, vt_lb, vt_rb; // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
 static float sin_theta, cos_theta;//麦轮解算用
 static float vx,vy;//获取车体信息要用到的中间变量
+static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
 
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 static attitude_t *chassis_IMU_data;     // 云台IMU数据
@@ -102,8 +104,6 @@ void ChassisInit()
     chassis_motor_config.can_init_config.tx_id = 0x204;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     motor_lb = DJIMotorInit(&chassis_motor_config);
-
-
 
     /***************************REFEREE_COMM_INIT******************************/
     //裁判系统和巡航还没搞好，就先不开了
@@ -225,6 +225,32 @@ static void send_judge_data()
     //chassis_feedback_data.bullet_speed = referee_data->GameRobotState.shooter_id2_17mm_speed_limit;
     //chassis_feedback_data.rest_heat_l = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_1_barrel_heat);
     //chassis_feedback_data.rest_heat_r = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_2_barrel_heat);
+
+    chassis_feedback_data.Occupation=(referee_data->EventData.event_type >> 21) & 0x03;
+    chassis_feedback_data.remain_time=referee_data->GameState.stage_remain_time;
+    chassis_feedback_data.game_progress=referee_data->GameState.game_progress;
+    
+    //to 巡航
+    if(referee_data->GameRobotState.robot_id>7)
+    {
+        chassis_feedback_data.remain_HP=referee_data->GameRobotHP.blue_7_robot_HP;
+        chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.blue_1_robot_HP;
+        chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
+
+        chassis_feedback_data.enemy_hero_HP=referee_data->GameRobotHP.red_1_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.red_3_robot_HP;
+        chassis_feedback_data.enemy_sentry_HP=referee_data->GameRobotHP.red_7_robot_HP;
+    }
+    else
+    {
+        chassis_feedback_data.remain_HP=referee_data->GameRobotHP.red_7_robot_HP;
+        chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.red_1_robot_HP;
+        chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.red_3_robot_HP;
+
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_1_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_7_robot_HP;
+    }   
 }
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
@@ -244,6 +270,5 @@ void ChassisTask()
 
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
-     
     CANCommSend(chasiss_can_comm, (void *)&chassis_feedback_data);
 }

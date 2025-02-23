@@ -10,11 +10,14 @@
 //#define CHASSIS_BOARD //底盘板
 #define GIMBAL_BOARD  //云台板
 
- #define VISION_USE_UART // 使用串口发送视觉数据
 
- #define ODOM_USE_UART // 使用串口发送巡航数据
+#define VISION_USE_UART // 使用串口发送视觉数据
+
+#define ODOM_USE_UART // 使用串口发送巡航数据
 
 /* 机器人重要参数定义,注意根据不同机器人进行修改,浮点数需要以.0或f结尾,无符号以u结尾 */
+#define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
+
 // 云台参数
 #define YAW_CHASSIS_ALIGN_ECD 2900  // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
 #define YAW_ECD_GREATER_THAN_4096 1 // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
@@ -103,17 +106,17 @@ typedef enum
 
 typedef enum
 {
-    LID_OPEN = 0, // 弹舱盖打开
-    LID_CLOSE,    // 弹舱盖关闭
-} lid_mode_e;
-
-typedef enum
-{
     LOAD_STOP = 0,  // 停止发射
     LOAD_REVERSE,   // 反转
 
     LOAD_BURSTFIRE, // 连发
 } loader_mode_e;
+typedef enum
+{
+    ROUND_FIND_ENERMY=0,
+    MID_ROUND_FIND_ENERMY,
+}
+nav_mode_e;
 
 // 功率限制（哨兵的是100w，感觉可以不用）
 typedef struct
@@ -176,6 +179,7 @@ typedef struct
     float pitch;
     float chassis_rotate_wz;
     gimbal_mode_e gimbal_mode;
+    nav_mode_e nav_mode;
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅
@@ -183,7 +187,6 @@ typedef struct
 {
     shoot_mode_e shoot_mode;
     loader_mode_e load_mode;
-    lid_mode_e lid_mode;
     friction_mode_e friction_mode;
     Bullet_Speed_e bullet_speed; // 弹速枚举
     uint8_t rest_heat;
@@ -202,11 +205,17 @@ typedef struct
 typedef struct
 {
     //发给巡航的数据
-     attitude_t chassis_imu_data;
-     float real_vx;
-     float real_vy;
-     float real_wz;
-     uint16_t remain_HP;
+    attitude_t chassis_imu_data;
+    float real_vx;
+    float real_vy;
+    float real_wz;
+    uint16_t remain_HP;
+    uint16_t self_hero_HP;
+    uint16_t self_infantry_HP;
+    uint16_t enemy_hero_HP;
+    uint16_t enemy_sentry_HP;
+    uint16_t enemy_infantry_HP;
+    uint16_t remain_time;
      //发给视觉的数据
     Enemy_Color_e enemy_color;   // 0 for blue, 1 for red
     Vision_Work_Mode_e vision_work_mode;
@@ -214,6 +223,8 @@ typedef struct
     uint8_t rest_heat;           // 剩余枪口热量
     Bullet_Speed_e bullet_speed; // 弹速限制
     uint8_t cmd_error_flag;
+    uint8_t Occupation;
+    uint8_t game_progress;
 } Chassis_Upload_Data_s;
 
 

@@ -238,8 +238,8 @@ static void GimbalAC()
 
 static void ChassisAC()
 {
-    chassis_cmd_send.vx=minipc_recv_data->Odom.vx;
-    chassis_cmd_send.vy=minipc_recv_data->Odom.vy;
+    chassis_cmd_send.vx=minipc_recv_data->Nav.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
+    chassis_cmd_send.vy=minipc_recv_data->Nav.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
     chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
 }
 
@@ -286,7 +286,7 @@ static void RemoteDataDeal()
     {
         GimbalAC();
         // //等巡航搞完改为ChassisAC();
-         ChassisRC();
+         ChassisAC();
          ShootAC();
     }
     else
@@ -322,7 +322,11 @@ void RobotCMDTask()
     VisionSetAltitude(gimbal_fetch_data.gimbal_imu_data.Yaw,gimbal_fetch_data.gimbal_imu_data.Pitch,
                         gimbal_fetch_data.gimbal_imu_data.Roll);
     // 设置巡航发送数据       
-    OdomSetMessage((float*)&chassis_fetch_data.chassis_imu_data.Gyro,chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,chassis_fetch_data.real_wz);
+    NavSetMessage(chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,gimbal_fetch_data.gimbal_imu_data.Yaw,chassis_fetch_data.Occupation
+                    ,chassis_fetch_data.remain_HP,chassis_fetch_data.self_infantry_HP,chassis_fetch_data.self_hero_HP
+                    ,chassis_fetch_data.enemy_color,chassis_fetch_data.enemy_infantry_HP,chassis_fetch_data.enemy_hero_HP
+                    ,chassis_fetch_data.remain_time,shoot_cmd_send.bullet_speed,chassis_fetch_data.game_progress
+                    );
     // 推送消息,双板通信,视觉通信
     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
