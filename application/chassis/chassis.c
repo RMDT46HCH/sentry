@@ -9,7 +9,7 @@
 #include "arm_math.h"
 #include "buzzer.h"
 #include "rm_referee.h"
-
+#include "referee_task.h"
 
 
 /* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
@@ -17,9 +17,9 @@
 #include "can_comm.h"
 #include "ins_task.h"
 static CANCommInstance *chasiss_can_comm; // 双板通信CAN comm
-attitude_t *Chassis_IMU_data;
 
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令（发布中心发给底盘的）
+static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
 
 static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; 
 
