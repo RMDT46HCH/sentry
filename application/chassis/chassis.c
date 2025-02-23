@@ -10,10 +10,7 @@
 #include "buzzer.h"
 #include "rm_referee.h"
 
-/* 根据robot_def.h中的macro自动计算的参数 */
-#define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
-#define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
-#define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
+
 
 /* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
  // 使用板载IMU获取底盘转动角速度（但初始化pid那里写的会很乱，不适合代码的可读性）

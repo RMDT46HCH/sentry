@@ -47,6 +47,11 @@
 #error Conflict board definition! You can only define one board type.
 #endif
 
+/* 根据robot_def.h中的macro自动计算的参数 */
+#define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
+#define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
+#define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
+
 #pragma pack(1) // 压缩结构体,取消字节对齐,下面的数据都可能被传输
 /* -------------------------基本控制模式和数据类型定义-------------------------*/
 /**
