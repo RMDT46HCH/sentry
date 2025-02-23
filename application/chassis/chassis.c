@@ -102,7 +102,7 @@ void ChassisInit()
 
     /***************************REFEREE_COMM_INIT******************************/
     //裁判系统和巡航还没搞好，就先不开了
-    //referee_data   = UITaskInit(&huart6,&ui_data); // 裁判系统初始化,会同时初始化UI
+    referee_data   = UITaskInit(&huart6,&ui_data); // 裁判系统初始化,会同时初始化UI
 
     /***************************BOARD_COMM_INIT******************************/
     CANComm_Init_Config_s comm_conf = {
@@ -212,13 +212,31 @@ static void SendChassisData()
  */
 static void send_judge_data()
 {
-    //to 视觉
-    //chassis_feedback_data.enemy_color = referee_data->GameRobotState.robot_id > 7 ? COLOR_RED : COLOR_BLUE; 
+    chassis_feedback_data.Occupation=(referee_data->EventData.event_type >> 21) & 0x03;
+    chassis_feedback_data.remain_time=referee_data->GameState.stage_remain_time;
+    chassis_feedback_data.game_progress=referee_data->GameState.game_progress;
+    
+    //to 巡航
+    if(referee_data->GameRobotState.robot_id>7)
+    {
+        chassis_feedback_data.remain_HP=referee_data->GameRobotHP.blue_7_robot_HP;
+        chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.blue_1_robot_HP;
+        chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
 
-    //to 发射
-    //chassis_feedback_data.bullet_speed = referee_data->GameRobotState.shooter_id2_17mm_speed_limit;
-    //chassis_feedback_data.rest_heat_l = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_1_barrel_heat);
-    //chassis_feedback_data.rest_heat_r = (uint16_t)(400 - referee_data->PowerHeatData.shooter_17mm_2_barrel_heat);
+        chassis_feedback_data.enemy_hero_HP=referee_data->GameRobotHP.red_1_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.red_3_robot_HP;
+        chassis_feedback_data.enemy_sentry_HP=referee_data->GameRobotHP.red_7_robot_HP;
+    }
+    else
+    {
+        chassis_feedback_data.remain_HP=referee_data->GameRobotHP.red_7_robot_HP;
+        chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.red_1_robot_HP;
+        chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.red_3_robot_HP;
+
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_1_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
+        chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_7_robot_HP;
+    }   
 }
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
