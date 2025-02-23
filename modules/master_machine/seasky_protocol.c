@@ -111,21 +111,29 @@ void get_protocol_send_Nav_data(
     static uint16_t crc16;
     static uint16_t data_len;
 
-    data_len = 27;
+    data_len = 33;
     /*帧头部分*/
     tx_buf[0]=tx_data->Nav.header;
     /*数据段*/
     memcpy(&tx_buf[1], &tx_data->Nav.vx, sizeof(float));
     memcpy(&tx_buf[5], &tx_data->Nav.vy, sizeof(float));
-    memcpy(&tx_buf[9], &tx_data->Nav.wz, sizeof(float));
-    memcpy(&tx_buf[13], &tx_data->Nav.gyro[0], sizeof(float));
-    memcpy(&tx_buf[17], &tx_data->Nav.gyro[1], sizeof(float));
-    memcpy(&tx_buf[21],  &tx_data->Nav.gyro[2], sizeof(float));
+    memcpy(&tx_buf[9], &tx_data->Nav.yaw, sizeof(float));
 
-    /*整包校验*/
-    crc16 = crc_16(&tx_buf[0], data_len - 2); // 不包括最后两个字节的校验和
-    tx_buf[data_len - 2] = crc16 & 0xff; // 低位在前
-    tx_buf[data_len - 1] = (crc16 >> 8) & 0xff; // 高位在后
+    memcpy(&tx_buf[13], &tx_data->Nav.self_sentry_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[15], &tx_data->Nav.self_hero_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[17],  &tx_data->Nav.self_infantry_HP, sizeof(uint16_t));
+
+    memcpy(&tx_buf[19], &tx_data->Nav.enemy_sentry_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[21], &tx_data->Nav.enemy_hero_HP, sizeof(uint16_t));
+    memcpy(&tx_buf[23],  &tx_data->Nav.enemy_infantry_HP, sizeof(uint16_t));
+
+    memcpy(&tx_buf[25], &tx_data->Nav.remain_time, sizeof(uint16_t));
+    memcpy(&tx_buf[27], &tx_data->Nav.remain_bullet, sizeof(uint16_t));
+    
+    memcpy(&tx_buf[29],  &tx_data->Nav.game_progress, sizeof(uint8_t));
+    memcpy(&tx_buf[30],  &tx_data->Nav.occupation, sizeof(uint8_t));
+
+    tx_buf[31]=tx_data->Nav.tail1;
     *tx_buf_len = data_len ;
 }
 /*
