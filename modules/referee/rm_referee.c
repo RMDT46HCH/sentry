@@ -1,3 +1,14 @@
+/**
+ * @file rm_referee.C
+ * @author kidneygood (you@domain.com)
+ * @brief
+ * @version 0.1
+ * @date 2022-11-18
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #include "rm_referee.h"
 #include "string.h"
 #include "crc_ref.h"
@@ -57,8 +68,8 @@ static void JudgeReadData(uint8_t *buff)
 				case ID_event_data: // 0x0101
 					memcpy(&referee_info.EventData, (buff + DATA_Offset), LEN_event_data);
 					break;
-				case ID_supply_projectile_action: // 0x0102
-					memcpy(&referee_info.SupplyProjectileAction, (buff + DATA_Offset), LEN_supply_projectile_action);
+				case ID_referee_warning://0x0104
+					memcpy(&referee_info.RefereeWarning, (buff + DATA_Offset), LEN_event_data);
 					break;
 				case ID_game_robot_state: // 0x0201
 					memcpy(&referee_info.GameRobotState, (buff + DATA_Offset), LEN_game_robot_state);
@@ -72,14 +83,15 @@ static void JudgeReadData(uint8_t *buff)
 				case ID_buff_musk: // 0x0204
 					memcpy(&referee_info.BuffMusk, (buff + DATA_Offset), LEN_buff_musk);
 					break;
-				case ID_aerial_robot_energy: // 0x0205
-					memcpy(&referee_info.AerialRobotEnergy, (buff + DATA_Offset), LEN_aerial_robot_energy);
-					break;
+
 				case ID_robot_hurt: // 0x0206
 					memcpy(&referee_info.RobotHurt, (buff + DATA_Offset), LEN_robot_hurt);
 					break;
 				case ID_shoot_data: // 0x0207
 					memcpy(&referee_info.ShootData, (buff + DATA_Offset), LEN_shoot_data);
+					break;
+				case ID_projectile_allowance: // 0x0208
+					memcpy(&referee_info.ProjectileAllowance, (buff + DATA_Offset), LEN_projectile_allowance);
 					break;
 				case ID_student_interactive: // 0x0301   syhtodo接收代码未测试
 					memcpy(&referee_info.ReceiveData, (buff + DATA_Offset), LEN_receive_data);

@@ -29,14 +29,14 @@ typedef struct
 	ext_game_result_t GameResult;						   // 0x0002
 	ext_game_robot_HP_t GameRobotHP;					   // 0x0003
 	ext_event_data_t EventData;							   // 0x0101
-	ext_supply_projectile_action_t SupplyProjectileAction; // 0x0102
 	ext_game_robot_state_t GameRobotState;				   // 0x0201
+	ext_referee_warning_t RefereeWarning;
 	ext_power_heat_data_t PowerHeatData;				   // 0x0202
 	ext_game_robot_pos_t GameRobotPos;					   // 0x0203
 	ext_buff_musk_t BuffMusk;							   // 0x0204
-	aerial_robot_energy_t AerialRobotEnergy;			   // 0x0205
 	ext_robot_hurt_t RobotHurt;							   // 0x0206
 	ext_shoot_data_t ShootData;							   // 0x0207
+	ext_projectile_allowance_t ProjectileAllowance;
 
 	// 自定义交互数据的接收
 	Communicate_ReceiveData_t ReceiveData;
@@ -65,7 +65,6 @@ typedef struct
 	gimbal_mode_e gimbal_mode;				 // 云台模式
 	shoot_mode_e shoot_mode;				 // 发射模式设置
 	friction_mode_e friction_mode;			 // 摩擦轮关闭
-	lid_mode_e lid_mode;					 // 弹舱盖打开
 	Chassis_Power_Data_s Chassis_Power_Data; // 功率控制
 
 	// 上一次的模式，用于flag判断
@@ -73,7 +72,6 @@ typedef struct
 	gimbal_mode_e gimbal_last_mode;
 	shoot_mode_e shoot_last_mode;
 	friction_mode_e friction_last_mode;
-	lid_mode_e lid_last_mode;
 	Chassis_Power_Data_s Chassis_last_Power_Data;
 
 } Referee_Interactive_info_t;
