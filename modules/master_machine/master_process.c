@@ -18,15 +18,13 @@ void VisionSetAltitude(float yaw, float pitch, float roll)
     minipc_send_data.Vision.pitch = pitch;
     minipc_send_data.Vision.roll = roll;
 }
-void OdomSetMessage(float* gyro, float vx, float vy, float wz)
+void OdomSetMessage(float* gyro, float vx, float vy, float yaw)
 {
     minipc_send_data.Odom.header=0x4A;
-    minipc_send_data.Odom.gyro[0]=gyro[0];
-    minipc_send_data.Odom.gyro[1]=gyro[1];
-    minipc_send_data.Odom.gyro[2]=gyro[2];
+
     minipc_send_data.Odom.vx=vx;
     minipc_send_data.Odom.vy=vy;
-    minipc_send_data.Odom.wz=wz;
+    minipc_send_data.Odom.yaw=yaw;
 }
 static USARTInstance *minipc_usart_instance;
 

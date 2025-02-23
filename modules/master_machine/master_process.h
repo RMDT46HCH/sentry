@@ -94,11 +94,20 @@ typedef struct
 	struct
 	{
 		uint8_t header;  
-		float vx;
-		float vy;
-		float wz;
-		float gyro[3];
-		uint16_t checksum; // 校验和
+		float32_t vx;
+		float32_t vy;
+		float32_t yaw;
+		uint16_t self_sentry_HP; 
+		uint16_t self_hero_HP; 
+		uint16_t self_infantry_HP; 
+		uint16_t enemy_sentry_HP;
+		uint16_t enemy_hero_HP; 
+		uint16_t enemy_infantry_HP; 
+		uint16_t remain_time;
+		uint16_t remain_bullet;
+		uint8_t occupation;
+		uint8_t game_progress;
+		uint8_t tail1; 
 	}Odom;
 } __attribute__((packed)) Minipc_Send_s;
 

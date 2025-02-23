@@ -117,10 +117,8 @@ void get_protocol_send_Odom_data(
     /*数据段*/
     memcpy(&tx_buf[1], &tx_data->Odom.vx, sizeof(float));
     memcpy(&tx_buf[5], &tx_data->Odom.vy, sizeof(float));
-    memcpy(&tx_buf[9], &tx_data->Odom.wz, sizeof(float));
-    memcpy(&tx_buf[13], &tx_data->Odom.gyro[0], sizeof(float));
-    memcpy(&tx_buf[17], &tx_data->Odom.gyro[1], sizeof(float));
-    memcpy(&tx_buf[21],  &tx_data->Odom.gyro[2], sizeof(float));
+    memcpy(&tx_buf[9], &tx_data->Odom.yaw, sizeof(float));
+
 
     /*整包校验*/
     crc16 = crc_16(&tx_buf[0], data_len - 2); // 不包括最后两个字节的校验和
