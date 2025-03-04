@@ -115,7 +115,6 @@ typedef enum
 {
     LOAD_STOP = 0,  // 停止发射
     LOAD_REVERSE,   // 反转
-
     LOAD_BURSTFIRE, // 连发
 } loader_mode_e;
 typedef enum
@@ -136,6 +135,7 @@ typedef struct
     float t_shoot;
     float t_pitch;
     float t_cmd_error;
+    float t_shoot_error;
     uint8_t vision_flag;
     uint8_t shoot_flag;
     uint8_t cmd_error_flag;
@@ -204,7 +204,8 @@ typedef struct
     float shoot_rate; // 连续发射的射频,unit per s,发/秒
     float fric_rate;
     float bullet_real_speed;
-
+    Fire_Mode_e fire_mode;
+    float dead_time;
 } Shoot_Ctrl_Cmd_s;
 
 /* ----------------gimbal/shoot/chassis发布的反馈数据----------------*/

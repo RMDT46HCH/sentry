@@ -200,6 +200,8 @@ static void VisionJudge()
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
+        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+
         DataLebel.fire_flag=0;
         AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
     }
@@ -253,6 +255,10 @@ static void ShootRC()
     else if (rc_data->rc.dial<-200)
     {
         //拨盘反转
+        shoot_cmd_send.load_mode=LOAD_REVERSE;
+    }
+    else if (rc_data->rc.dial<-200)
+    {
         shoot_cmd_send.load_mode=LOAD_REVERSE;
     }
     else
@@ -354,7 +360,7 @@ static void RemoteDataDeal()
          ChassisAC();
          ShootAC();
     }
-    else
+    else if (switch_is_down(rc_data[TEMP].rc.switch_right)) 
     {
         AnythingStop();
     }

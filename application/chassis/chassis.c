@@ -113,7 +113,7 @@ void ChassisInit()
         .recv_data_len = sizeof(Chassis_Ctrl_Cmd_s),
         .send_data_len = sizeof(Chassis_Upload_Data_s),
     };
-    chasiss_can_comm = CANCommInit(&comm_conf); // can comm初始化
+    chassis_can_comm = CANCommInit(&comm_conf); // can comm初始化
 }
 
     /***************************SEND_TO_MOTOR******************************/

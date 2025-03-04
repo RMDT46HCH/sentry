@@ -8,12 +8,7 @@
 #define MINIPC_SEND_SIZE 36u
 
 #pragma pack(1)
-typedef enum
-{
-	NO_FIRE = 0,
-	AUTO_FIRE = 1,
-	AUTO_AIM = 2
-} Fire_Mode_e;
+
 
 typedef enum
 {

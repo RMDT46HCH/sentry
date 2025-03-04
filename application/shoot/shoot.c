@@ -9,7 +9,6 @@
 
 /* 对于双发射机构的机器人,将下面的数据封装成结构体即可,生成两份shoot应用实例 */
 static DJIMotorInstance *friction_l, *friction_r, *loader; // 拨盘电机
-// static servo_instance *lid; 
 static Publisher_t *shoot_pub;
 static Shoot_Ctrl_Cmd_s shoot_cmd_recv; // 来自cmd的发射控制信息
 static Subscriber_t *shoot_sub;
@@ -53,12 +52,12 @@ void ShootInit()
             .close_loop_type = SPEED_LOOP | CURRENT_LOOP,
         },
         .motor_type = M3508};
-    friction_config.can_init_config.tx_id = 2,
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
+    friction_config.can_init_config.tx_id = 1,
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
     friction_l = DJIMotorInit(&friction_config);
 
-    friction_config.can_init_config.tx_id = 1; // 右摩擦轮
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    friction_config.can_init_config.tx_id = 2; // 右摩擦轮
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     friction_r = DJIMotorInit(&friction_config);
 
     // 拨盘电机
@@ -112,7 +111,6 @@ void ShootInit()
     memset(&cal_bullet,0,sizeof(cal_bullet));
     cal_bullet.shoot_l=1;
     cal_bullet.shoot_r=0;
-
 }
 
 
