@@ -200,8 +200,6 @@ static void VisionJudge()
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
-        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
-
         DataLebel.fire_flag=0;
         AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
     }

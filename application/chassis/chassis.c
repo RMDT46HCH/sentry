@@ -16,7 +16,7 @@
  // 使用板载IMU获取底盘转动角速度（但初始化pid那里写的会很乱，不适合代码的可读性）
 #include "can_comm.h"
 #include "ins_task.h"
-static CANCommInstance *chasiss_can_comm; // 双板通信CAN comm
+static CANCommInstance *chassis_can_comm; // 双板通信CAN comm
 
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令（发布中心发给底盘的）
 static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
@@ -238,7 +238,7 @@ static void SendJudgeData()
 void ChassisTask()
 {
     // 获取新的控制信息
-    chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chasiss_can_comm);
+    chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chassis_can_comm);
     
     //底盘动与不动
     ChassisStateSet();
@@ -255,5 +255,5 @@ void ChassisTask()
     SendJudgeData();
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
-    CANCommSend(chasiss_can_comm, (void *)&chassis_feedback_data);
+    CANCommSend(chassis_can_comm, (void *)&chassis_feedback_data);
 }

@@ -204,7 +204,6 @@ typedef struct
     float shoot_rate; // 连续发射的射频,unit per s,发/秒
     float fric_rate;
     float bullet_real_speed;
-    Fire_Mode_e fire_mode;
     float dead_time;
 } Shoot_Ctrl_Cmd_s;
 
