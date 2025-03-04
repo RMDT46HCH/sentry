@@ -12,7 +12,7 @@
 #include "master_process.h"
 #include "daemon.h"
 #include "buzzer.h"
-
+#include "referee_task.h"
 #include "bsp_log.h"
 
 osThreadId insTaskHandle;
@@ -25,6 +25,7 @@ void StartINSTASK(void const *argument);
 void StartMOTORTASK(void const *argument);
 void StartDAEMONTASK(void const *argument);
 void StartROBOTTASK(void const *argument);
+void StartUITASK(void const *argument);
 
 /**
  * @brief 初始化机器人任务,所有持续运行的任务都在这里初始化
@@ -44,6 +45,9 @@ void OSTaskInit()
 
     osThreadDef(robottask, StartROBOTTASK, osPriorityNormal, 0, 1024);
     robotTaskHandle = osThreadCreate(osThread(robottask), NULL);
+
+    osThreadDef(uitask, StartUITASK, osPriorityNormal, 0, 512);
+    uiTaskHandle = osThreadCreate(osThread(uitask), NULL);
 
 }
 
@@ -115,6 +119,19 @@ __attribute__((noreturn)) void StartROBOTTASK(void const *argument)
         if (robot_dt > 5)
             LOGERROR("[freeRTOS] ROBOT core Task is being DELAY! dt = [%f]", &robot_dt);
         osDelay(5);
+    }
+}
+
+__attribute__((noreturn)) void StartUITASK(void const *argument)
+{
+    LOGINFO("[freeRTOS] UI Task Start");
+    MyUIInit();
+    LOGINFO("[freeRTOS] UI Init Done, communication with ref has established");
+    for (;;)
+    {
+        // 每给裁判系统发送一包数据会挂起一次,详见UITask函数的refereeSend()
+        UITask();
+        osDelay(1); // 即使没有任何UI需要刷新,也挂起一次,防止卡在UITask中无法切换
     }
 }
 

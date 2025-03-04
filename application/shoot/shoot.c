@@ -19,7 +19,9 @@ static ServoInstance *change;
 
 void ShootInit()
 {
-    // 左摩擦轮
+    /***************************MOTOR_INIT******************************/
+
+    // 摩擦轮电机的初始化，设置can通信如句柄、id，设置pid，及电机安装是正转还是反转（相当于给最终输出值添负号）及电机型号
     Motor_Init_Config_s friction_config = {
         .can_init_config = 
         {
@@ -66,7 +68,7 @@ void ShootInit()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp = 10, // 10
+                .Kp = 20, // 10
                 .Ki = 1, // 1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
@@ -93,7 +95,7 @@ void ShootInit()
     loader_config.can_init_config.tx_id=3;
     loader = DJIMotorInit(&loader_config);
 
-    //初始化参数
+    //舵机初始化，用于切换枪管
     Servo_Init_Config_s config= {
         .htim=&htim1,
         .Channel=TIM_CHANNEL_1,
@@ -103,120 +105,97 @@ void ShootInit()
     };
     // 设置好参数后进行初始化并保留返回的指针
     change = ServoInit(&config);
-
-
+    //创建发布、订阅者
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
+
     memset(&cal_bullet,0,sizeof(cal_bullet));
+    cal_bullet.shoot_l=1;
+    cal_bullet.shoot_r=0;
+
 }
 
 
 static void CalHeat()
 {
+    //切换到右枪管
+    if(cal_bullet.shoot_l == 0&&cal_bullet.shoot_r == 1)
+    {
+        Servo_Motor_FreeAngle_Set(change,135);
+        //先等1s，等切换枪管完再发射
+        if(DWT_GetTimeline_s()>1)
+        shoot_feedback_data.over_heat_flag=0;
+
+    }
+    //切换到左枪管
+    else if(cal_bullet.shoot_l == 1&&cal_bullet.shoot_r == 0)
+    {
+        Servo_Motor_FreeAngle_Set(change,32);
+        if(DWT_GetTimeline_s()>1)
+        shoot_feedback_data.over_heat_flag=0;
+    }
+    //超热量时换枪管
+    if(shoot_cmd_recv.left_bullet_heat>HEAT_LIMIT &&cal_bullet.shoot_l==1)
+    {
+        shoot_feedback_data.over_heat_flag=1;
+        if(DWT_GetTimeline_s()>1)
+        {
+            // 切换到右枪管
+            cal_bullet.shoot_l = 0;
+            cal_bullet.shoot_r = 1;
+        }
+        //两个枪管热量均满，超热量
+        if(cal_bullet.shoot_heat_r > CHANGE_LIMIT)
+        {
+            shoot_feedback_data.over_heat_flag=1;
+        }
+    }
+        
+    else if (shoot_cmd_recv.right_bullet_heat > HEAT_LIMIT && cal_bullet.shoot_r == 1)
+    {
+        shoot_feedback_data.over_heat_flag=1;
+        if(DWT_GetTimeline_s()>1)
+        {
+            // 切换到左枪管
+            cal_bullet.shoot_l = 1;
+            cal_bullet.shoot_r = 0;
+        }
+
+        if(cal_bullet.shoot_heat_l > CHANGE_LIMIT)
+        {
+            shoot_feedback_data.over_heat_flag=1;
+        }
+    }
+    //让枪管恢复正常
+    else if(cal_bullet.shoot_heat_l<RECOVER_HEAT_LIMIT||cal_bullet.shoot_heat_r < RECOVER_HEAT_LIMIT)
+    {
+        shoot_feedback_data.over_heat_flag=0;
+    }
+    /*
     // 记录初始情况下的电机角度和时间
     if (cal_bullet.first_flag == 0)
     {
         cal_bullet.last_time = DWT_GetTimeline_ms();
         cal_bullet.last_loader_total_heat_angle = loader->measure.init_total_angle;
-        cal_bullet.shoot_heat_l = 0;
-        cal_bullet.shoot_heat_r = 0;
-        cal_bullet.first_flag = 1;
-        cal_bullet.shoot_l = 1;
-        cal_bullet.shoot_r = 0;
-        cal_bullet.rest_bullet = TOTAL_BULLET;
-        Servo_Motor_FreeAngle_Set(change,40);
     }
 
     // 计算实际发弹数以及剩余弹量
-    if ((loader->measure.total_angle - cal_bullet.last_loader_total_angle) >= ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER && cal_bullet.rest_bullet > 0)
+    if ((loader->measure.total_angle - cal_bullet.last_loader_total_angle) >= ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER)
     {
-        cal_bullet.rest_bullet -= (loader->measure.total_angle - cal_bullet.last_loader_total_angle) / (ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER);
         cal_bullet.last_loader_total_angle = loader->measure.total_angle;
     }
 
     // 以10Hz每秒减少、增加热量
     if (DWT_GetTimeline_ms() - cal_bullet.last_time >= 100)
     {
-            if (cal_bullet.shoot_heat_l >= COOLING_VAL / 10)
-            {
-                cal_bullet.shoot_heat_l -= COOLING_VAL / 10;
-            }
-            else
-            {
-                cal_bullet.shoot_heat_l = 0;
-            }
-            if (cal_bullet.shoot_heat_r >= COOLING_VAL / 10)
-            {
-                cal_bullet.shoot_heat_r -= COOLING_VAL / 10;
-            }
-            else
-            {
-                cal_bullet.shoot_heat_r = 0;
-            }
         cal_bullet.last_time = DWT_GetTimeline_ms();
-
-        // 每发射1发小弹丸加10点热量
-        if ((loader->measure.total_angle - cal_bullet.last_loader_total_heat_angle) >= 1080)
-        {
-            if (cal_bullet.shoot_l == 1)
-            {
-                cal_bullet.shoot_heat_l += ((loader->measure.total_angle - cal_bullet.last_loader_total_heat_angle) / 1080.0) * 10;
-            }
-            else if (cal_bullet.shoot_r == 1)
-            {
-                cal_bullet.shoot_heat_r += ((loader->measure.total_angle - cal_bullet.last_loader_total_heat_angle) / 1080.0) * 10;
-            }
-            cal_bullet.last_loader_total_heat_angle = loader->measure.total_angle;
-        }
     }
-
-    // 限幅 + 冷却范围整定
-    if (cal_bullet.shoot_heat_l > 2 * HEAT_LIMIT)
-    {
-        cal_bullet.shoot_heat_l = 2 * HEAT_LIMIT;
-    }
-    else if (cal_bullet.shoot_heat_l <= 0)
-    {
-        cal_bullet.shoot_heat_l = 0;
-    }
-
-    if (cal_bullet.shoot_heat_r > 2 * HEAT_LIMIT)
-    {
-        cal_bullet.shoot_heat_r = 2 * HEAT_LIMIT;
-    }
-    else if (cal_bullet.shoot_heat_r <= 0)
-    {
-        cal_bullet.shoot_heat_r = 0;
-    }
-
-    // 切换枪管
-    if (cal_bullet.shoot_heat_l > HEAT_LIMIT && cal_bullet.shoot_l == 1)
-    {
-        // 切换到右枪管
-        Servo_Motor_FreeAngle_Set(change,130);
-        cal_bullet.shoot_l = 0;
-        cal_bullet.shoot_r = 1;
-        if(cal_bullet.shoot_heat_r > CHANGE_LIMIT)
-        {
-            shoot_feedback_data.over_heat_flag=1;
-        }
-    }
-    else if (cal_bullet.shoot_heat_r > HEAT_LIMIT && cal_bullet.shoot_r == 1)
-    {
-        // 切换到左枪管
-        Servo_Motor_FreeAngle_Set(change,40);
-        cal_bullet.shoot_l = 1;
-        cal_bullet.shoot_r = 0;
-        if(cal_bullet.shoot_heat_l > CHANGE_LIMIT)
-        {
-            shoot_feedback_data.over_heat_flag=1;
-        }
-    }
-    else if(cal_bullet.shoot_heat_l<RECOVER_HEAT_LIMIT||cal_bullet.shoot_heat_r < RECOVER_HEAT_LIMIT)
-    {
-        shoot_feedback_data.over_heat_flag=0;
-    }
+    */
 }
+
+/**
+ * @brief 整个发射机构状态设置
+ */
 static void ShootStateSet()
 {
     if (shoot_cmd_recv.shoot_mode == SHOOT_OFF)
@@ -232,6 +211,10 @@ static void ShootStateSet()
         DJIMotorEnable(loader);
     }
 }
+
+/**
+ * @brief 拨盘状态设置及转速设定
+ */
 
 static void ShootLoaderSet()
 {
@@ -249,10 +232,10 @@ static void ShootLoaderSet()
         DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 4);
         // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度
         break;
-    // 拨盘反转,对速度闭环（待测试）
+    // 拨盘反转,对速度闭环
     case LOAD_REVERSE:
         DJIMotorOuterLoop(loader, SPEED_LOOP);
-        DJIMotorSetRef(loader, -1000);
+        DJIMotorSetRef(loader, -4000);
         break;
     default:
         while (1)
@@ -264,14 +247,14 @@ static void ShootLoaderSet()
 /*
 
 /**
- * @brief  已实测，发射速度快了就让他慢下来
+ * @brief   摩擦轮状态设置及射速设定
  */
 static void ShootSpeedSet()
 {
     if (shoot_cmd_recv.friction_mode == FRICTION_ON)
     {
-        DJIMotorSetRef(friction_l, 26000);
-        DJIMotorSetRef(friction_r, 26000);
+        DJIMotorSetRef(friction_l, 32000);
+        DJIMotorSetRef(friction_r, 32000);
     }
     else // 关闭摩擦轮
     {
@@ -282,7 +265,7 @@ static void ShootSpeedSet()
 
 static void SendShootData()
 {
-    shoot_feedback_data.loader_speed_aps=loader->measure.speed_aps;
+    shoot_feedback_data.speed=loader->measure.speed_aps;
 }
 
 /* 机器人发射机构控制核心任务 */
@@ -296,10 +279,10 @@ void ShootTask()
     ShootLoaderSet();
     //射速设定
     ShootSpeedSet();
-    //计算热量并限制
+    //计算热量并进行枪管切换
     CalHeat();
     //给发布中心电机实际情况，从而调节拨盘电机的模式
     SendShootData();
-    // 反馈数据,用于卡弹反馈（后续再加个模块离线）
+    // 反馈数据,用于卡弹反馈
     PubPushMessage(shoot_pub, (void *)&shoot_feedback_data);
 }

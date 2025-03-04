@@ -45,8 +45,6 @@ static float rotate_speed_buff = 1;
 
 void ChassisInit()
 {
-    /***************************IMU_INIT******************************/
-
     /***************************MOTOR_INIT******************************/
     // 底盘电机的初始化，包括什么通信、什么id、pid及电机安装是正装还是反装（相当于给最终输出值添负号）及型号
 
@@ -82,29 +80,28 @@ void ChassisInit()
         },
         .motor_type = M3508,
     };
-    //电机id号一定一定得一一对应，不然看代码的人一头雾水！！
+    //电机id号一定一定得一一对应
     chassis_motor_config.can_init_config.tx_id = 0x201;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    motor_rb = DJIMotorInit(&chassis_motor_config);
-
-    chassis_motor_config.can_init_config.tx_id = 0x202;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    motor_rf = DJIMotorInit(&chassis_motor_config);
-    chassis_motor_config.can_init_config.tx_id = 0x203;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     motor_lf = DJIMotorInit(&chassis_motor_config);
-
-    chassis_motor_config.can_init_config.tx_id = 0x204;
+    
+    chassis_motor_config.can_init_config.tx_id = 0x202;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     motor_lb = DJIMotorInit(&chassis_motor_config);
 
+    chassis_motor_config.can_init_config.tx_id = 0x204;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    motor_rf = DJIMotorInit(&chassis_motor_config);
 
+    chassis_motor_config.can_init_config.tx_id = 0x203;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    motor_rb = DJIMotorInit(&chassis_motor_config);
 
     /***************************REFEREE_COMM_INIT******************************/
-    //裁判系统和巡航还没搞好，就先不开了
-    referee_data   = UITaskInit(&huart6,&ui_data); // 裁判系统初始化,会同时初始化UI
+    referee_data   = UITaskInit(&huart6,&ui_data); // 裁判系统初始化
 
     /***************************BOARD_COMM_INIT******************************/
+    //双板通信
     CANComm_Init_Config_s comm_conf = {
         .can_config = {
             .can_handle = &hcan2,
@@ -117,7 +114,6 @@ void ChassisInit()
     };
     chasiss_can_comm = CANCommInit(&comm_conf); // can comm初始化
 }
-
 
     /***************************SEND_TO_MOTOR******************************/
 static void ChassisStateSet()
@@ -146,19 +142,20 @@ static void ChassisRotateSet()
     // 根据控制模式设定旋转速度
     switch (chassis_cmd_recv.chassis_mode)
     {
-        //底盘跟随就不调了，懒
-        case CHASSIS_NO_FOLLOW: // 底盘不旋转,但维持全向机动,一般用于调整云台姿态
+        case CHASSIS_NO_FOLLOW: // 底盘不旋转,但维持全向机动
             chassis_cmd_recv.wz = 0;
         break;
+
         case CHASSIS_ROTATE: // 变速小陀螺
             chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*rotate_speed_buff;
         break;
+
         default:
         break;
     }
 }
 /**
- * @brief 计算每个底盘电机的输出,正运动学解算
+ * @brief 计算每个底盘电机的输出,底盘正运动学解算
  *        
  */
 static void MecanumCalculate()
@@ -176,24 +173,22 @@ static void MecanumCalculate()
 }
 
 /**
- * @brief 功率高系数就大些（没裁判系统还没调）
+ * @brief
  *
  */
 static void LimitChassisOutput()
 { 
-    rotate_speed_buff = 2.5;
-    chassis_power_buff = 1.25;
-    DJIMotorSetRef(motor_lf, vt_lf*chassis_power_buff);
-    DJIMotorSetRef(motor_rf, vt_rf*chassis_power_buff);
-    DJIMotorSetRef(motor_lb, vt_lb*chassis_power_buff);
-    DJIMotorSetRef(motor_rb, vt_rb*chassis_power_buff);
+    rotate_speed_buff = 4.75;
+    DJIMotorSetRef(motor_lf, vt_lf);
+    DJIMotorSetRef(motor_rf, vt_rf);
+    DJIMotorSetRef(motor_lb, vt_lb);
+    DJIMotorSetRef(motor_rb, vt_rb);
 }
 
 
 
 /**
- * @brief 根据每个轮子的速度反馈,计算底盘的实际运动速度,逆运动解算
- *        对于双板的情况,考虑增加来自底盘板IMU的数据
+ * @brief 根据每个轮子的速度反馈,计算底盘的实际运动速度,逆运动解算，并发给巡航底盘实时数据             
  */
 static void SendChassisData()
 {
@@ -202,21 +197,17 @@ static void SendChassisData()
     vy = (-motor_lf->measure.speed_aps +motor_lb->measure.speed_aps + motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000  ;
     chassis_feedback_data.real_vx = vx * cos_theta + vy * sin_theta;
     chassis_feedback_data.real_vy = -vx * sin_theta + vy * cos_theta;
-    //后续看看要不要发imu（还不知道哪个准些）
-    chassis_feedback_data.real_wz=(-motor_lf->measure.speed_aps -motor_lb->measure.speed_aps + motor_rb->measure.speed_aps + motor_rf->measure.speed_aps) / (LF_CENTER + RF_CENTER + LB_CENTER + RB_CENTER);;
 }
 
 /**
- * @brief 靠这个函数将裁判系统发给发布中心，再通过发布中心发布给各个执行机构
-
+ * @brief  将裁判系统的信息发给巡航，让其进行决策。
  */
-static void send_judge_data()
+static void SendJudgeData()
 {
     chassis_feedback_data.Occupation=(referee_data->EventData.event_type >> 21) & 0x03;
     chassis_feedback_data.remain_time=referee_data->GameState.stage_remain_time;
     chassis_feedback_data.game_progress=referee_data->GameState.game_progress;
     
-    //to 巡航
     if(referee_data->GameRobotState.robot_id>7)
     {
         chassis_feedback_data.remain_HP=referee_data->GameRobotHP.blue_7_robot_HP;
@@ -237,23 +228,30 @@ static void send_judge_data()
         chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
         chassis_feedback_data.enemy_infantry_HP=referee_data->GameRobotHP.blue_7_robot_HP;
     }   
+    chassis_feedback_data.left_bullet_heat= referee_data->PowerHeatData.shooter_17mm_2_barrel_heat;
+    chassis_feedback_data.right_bullet_heat= referee_data->PowerHeatData.shooter_17mm_1_barrel_heat;
+    chassis_feedback_data.bullet_num=referee_data->ProjectileAllowance.projectile_allowance_17mm;
+    chassis_feedback_data.bullet_speed=referee_data->ShootData.bullet_speed;
 }
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
 {
     // 获取新的控制信息
     chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chasiss_can_comm);
+    
     //底盘动与不动
     ChassisStateSet();
-    //旋转速度设定
+    //旋转模式及速度设定
     ChassisRotateSet();
+
     // 根据云台和底盘的角度offset将控制量映射到底盘坐标系
     // 根据控制模式进行正运动学解算,计算底盘各个电机的速度
     MecanumCalculate();
 
     // 根据裁判系统的反馈数据设定闭环参考值
     LimitChassisOutput();
-    send_judge_data();
+    //将裁判系统的信息发给巡航，让其进行决策。
+    SendJudgeData();
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
      

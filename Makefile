@@ -148,7 +148,7 @@ application/gimbal/gimbal.c \
 application/chassis/chassis.c \
 application/shoot/shoot.c \
 application/cmd/robot_cmd.c \
-application/robot.c
+application/robot.c 
 
 # ASM sources
 ASM_SOURCES =  \
@@ -253,7 +253,7 @@ C_INCLUDES =  \
 -Imodules/daemon \
 -Imodules/alarm \
 -Imodules  \
--IMiddlewares/ST/ARM/DSP/Inc
+-IMiddlewares/ST/ARM/DSP/Inc 
 
 
 # compile gcc flags

@@ -70,15 +70,7 @@ typedef enum
 	VISION_MODE_BIG_BUFF = 2,
 } Vision_Work_Mode_e;
 
-typedef enum
-{
-	BULLET_SPEED_NONE = 0,
-	BIG_AMU_10 = 10,
-	SMALL_AMU_15 = 15,
-	BIG_AMU_16 = 16,
-	SMALL_AMU_18 = 18,
-	SMALL_AMU_30 = 30,
-} Bullet_Speed_e;
+
 
 typedef struct
 {

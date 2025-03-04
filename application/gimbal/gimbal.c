@@ -17,8 +17,13 @@ static Gimbal_Ctrl_Cmd_s gimbal_cmd_recv;         // 来自cmd的控制信息
 
 void GimbalInit()
 {
-    gimbal_IMU_data = INS_Init(); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
-    // YAW电机的初始化，包括什么通信、什么id、pid及电机安装是正装还是反装（相当于给最终输出值添负号）及型号
+    /***************************imu_INIT******************************/
+    // IMU先初始化,获取姿态数据指针赋给yaw、pitch电机的其他数据来源
+    gimbal_IMU_data = INS_Init(); 
+
+    /***************************MOTOR_INIT******************************/
+
+    // YAW电机的初始化，设置can通信如句柄、id，设置pid，及电机安装是正转还是反转（相当于给最终输出值添负号）及电机型号
     Motor_Init_Config_s yaw_config = {
         .can_init_config = 
         {
@@ -27,24 +32,26 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 2.6, // 6
-                .Ki = 1.89,
-                .Kd =0.27,//0.0.6
+                .Kp = 7, // 6
+                .Ki = 2,
+                .Kd =0.7,//0.0.6
                 .DeadBand = 0.01,
                 .Improve = PID_ChangingIntegrationRate | PID_Derivative_On_Measurement,
                 .CoefA=3,
-                .CoefB=7,
+                .CoefB=3,
                 .IntegralLimit = 100,
                 .MaxOut = 500,
             },
             .speed_PID = {
-                .Kp = 260,  // 260
-                .Ki = 0, // 200
+                .Kp = 200,  // 260
+                .Ki = 10, // 200
                 .Kd = 0,
                 .Improve = PID_ChangingIntegrationRate | PID_Derivative_On_Measurement,
                 .IntegralLimit = 3000,
                 .MaxOut = 20000,
             },
+            //电机反馈来源
+            // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
             .other_angle_feedback_ptr = &gimbal_IMU_data->YawTotalAngle,
             //0为roll，1为pitch，2为yaw
             .other_speed_feedback_ptr = &gimbal_IMU_data->Gyro[2],
@@ -57,7 +64,7 @@ void GimbalInit()
             .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
         .motor_type = GM6020};
-    // PITCH 电机的初始化，包括什么通信、什么id、pid及电机安装是正装还是反装（相当于给最终输出值添负号）及型号
+    // YAW电机的初始化，设置can通信如句柄、id，设置pid，及电机安装是正转还是反转（相当于给最终输出值添负号）及电机型号
 
     Motor_Init_Config_s pitch_config = {
         .can_init_config = {
@@ -66,12 +73,12 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 5, // 80
-                .Ki = 3,//10
-                .Kd = 0.2,//1
+                .Kp = 30, // 80
+                .Ki = 8,//10
+                .Kd = 0.6,//1
                 .Improve =PID_ChangingIntegrationRate |  PID_Derivative_On_Measurement,
-                .CoefA=3.2,
-                .CoefB=3.2,
+                .CoefA=2,
+                .CoefB=2,
                 .IntegralLimit = 100,
                 .MaxOut = 500,
             },
@@ -96,19 +103,24 @@ void GimbalInit()
         },
         .motor_type = GM6020,
     };
+
     yaw_config.can_init_config.tx_id = 2,
     yaw_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
 
     pitch_config.can_init_config.tx_id = 1; 
     pitch_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
-    // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
+    //设置完所需信息后，进行初始化，相当于将初始化信息全部复制粘贴到电机实例中去
     yaw_motor = DJIMotorInit(&yaw_config);
     pitch_motor = DJIMotorInit(&pitch_config);
-
+    
+    //创建发布订阅者
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));//云台反馈出来的信息
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));    //云台接收的信息
 }
 
+/**
+ * @brief 云台状态设定
+ */
 static void GimbalStateSet()
 {
     switch (gimbal_cmd_recv.gimbal_mode)
@@ -130,7 +142,9 @@ static void GimbalStateSet()
     }
 }
 
-
+/**
+ * @brief 发送反馈信息给终端
+ */
 static void SendGimbalData()
 {
     gimbal_feedback_data.gimbal_imu_data = *gimbal_IMU_data;
