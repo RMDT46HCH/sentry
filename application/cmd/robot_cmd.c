@@ -180,7 +180,13 @@ static void BasicFunctionSet()
  */
 static void VisionJudge()
 {
-    if(minipc_recv_data->Vision.deep!=0)//代表收到信息
+    cnt1=sin(DWT_GetTimeline_s());
+    if(cnt1>-0.1&&cnt1<1&&DataLebel.cmd_error_flag==0)
+    {
+        gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
+    }
+
+    if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
     {
         DataLebel.vision_flag=1;
         //检测到装甲板，开启蜂鸣器
@@ -196,13 +202,23 @@ static void VisionJudge()
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
         }
+        if(minipc_recv_data->Vision.deep-gimbal_cmd_send.last_deep==0&&cnt1<-0.2)
+        {
+            DataLebel.cmd_error_flag=1;
+            DataLebel.fire_flag=0;
+            DataLebel.vision_flag=0;
+            gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
+            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+        }
     }
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
         DataLebel.fire_flag=0;
+        DataLebel.vision_flag=0;
         AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
     }
+
 }
 /********************************RemoteControl****************************/
 
@@ -214,6 +230,7 @@ static void GimbalRC()
 {
     gimbal_cmd_send.yaw -= 0.0005f * (float)rc_data[TEMP].rc.rocker_right_x;//0
     gimbal_cmd_send.pitch -= 0.0003f * (float)rc_data[TEMP].rc.rocker_right_y;
+    DataLebel.cmd_error_flag=0;
 }
 /**
  * @brief 底盘控制，发送x和y速度
@@ -299,7 +316,7 @@ static void ChassisAC()
 {
     chassis_cmd_send.vx=minipc_recv_data->Nav.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
     chassis_cmd_send.vy=minipc_recv_data->Nav.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
-    chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
+    chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
 }
 
 static void ShootAC()
@@ -312,7 +329,7 @@ static void ShootAC()
         shoot_cmd_send.load_mode=LOAD_STOP;
         else
         {
-            shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
+            shoot_cmd_send.load_mode=LOAD_STOP;
             ShootCheck();
         }
     }

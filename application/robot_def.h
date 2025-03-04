@@ -189,6 +189,8 @@ typedef struct
     float chassis_rotate_wz;
     gimbal_mode_e gimbal_mode;
     nav_mode_e nav_mode;
+    float last_deep;
+
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅
