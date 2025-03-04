@@ -158,7 +158,7 @@ void get_protocol_info_vision(uint8_t *rx_buf,
             recv_data->Vision.checksum = (rx_buf[date_length - 2] << 8) | rx_buf[date_length - 1];
     }
 }
-void get_protocol_info_odom(uint8_t *rx_buf, 
+void get_protocol_info_nav(uint8_t *rx_buf, 
                            Minipc_Recv_s *recv_data)
 {
     static protocol_rm_struct pro;

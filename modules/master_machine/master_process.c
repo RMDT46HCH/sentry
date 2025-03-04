@@ -74,7 +74,7 @@ static void DecodeMinpc()
 {
     //DaemonReload(minipc_daemon_instance); // 喂狗
     get_protocol_info_vision(minipc_usart_instance->recv_buff,&minipc_recv_data);
-    get_protocol_info_odom(minipc_usart_instance->recv_buff, &minipc_recv_data);
+    get_protocol_info_nav(minipc_usart_instance->recv_buff, &minipc_recv_data);
 }
 
 Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle)
@@ -117,47 +117,3 @@ void SendMinipcData()
 }
 
 #endif // VISION_USE_UART
-
-#ifdef VISION_USE_VCP
-
-#include "bsp_usb.h"
-static uint8_t *vis_recv_buff;
-
-static void DecodeVision(uint16_t recv_len)
-{
-    uint16_t flag_register;
-    get_protocol_info(vis_recv_buff, &flag_register, (uint8_t *)&recv_data.pitch);
-    // TODO: code to resolve flag_register;
-}
-
-/* 视觉通信初始化 */
-Vision_Recv_s *VisionInit(UART_HandleTypeDef *_handle)
-{
-    UNUSED(_handle); // 仅为了消除警告
-    USB_Init_Config_s conf = {.rx_cbk = DecodeVision};
-    vis_recv_buff = USBInit(conf);
-
-    // 为master process注册daemon,用于判断视觉通信是否离线
-    Daemon_Init_Config_s daemon_conf = {
-        .callback = VisionOfflineCallback, // 离线时调用的回调函数,会重启串口接收
-        .owner_id = NULL,
-        .reload_count = 5, // 50ms
-    };
-    vision_daemon_instance = DaemonRegister(&daemon_conf);
-
-    return &recv_data;
-}
-
-void VisionSend()
-{
-    static uint16_t flag_register;
-    static uint8_t send_buff[VISION_SEND_SIZE];
-    static uint16_t tx_len;
-    // TODO: code to set flag_register
-    flag_register = 30 << 8 | 0b00000001;
-    // 将数据转化为seasky协议的数据包
-    get_protocol_send_data(0x02, flag_register, &send_data.yaw, 3, send_buff, &tx_len);
-    USBTransmit(send_buff, tx_len);
-}
-
-#endif // VISION_USE_VCP

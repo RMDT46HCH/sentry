@@ -78,9 +78,9 @@ typedef struct
 	{
 		uint8_t header;  // 帧头，固定为0x5A
 		uint8_t detect_color;
-		float roll;
-		float pitch;
-		float yaw;
+		float32_t roll;
+		float32_t pitch;
+		float32_t yaw;
 		uint16_t checksum; // 校验和
 	}Vision;
 	struct
@@ -168,7 +168,7 @@ void get_protocol_send_Nav_data(
 void get_protocol_info_vision(uint8_t *rx_buf, 
                            Minipc_Recv_s *recv_data);
 
-void get_protocol_info_odom(uint8_t *rx_buf, 
+void get_protocol_info_nav(uint8_t *rx_buf, 
                            Minipc_Recv_s *recv_data);
 
 

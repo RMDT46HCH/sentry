@@ -32,6 +32,7 @@ static float chassis_vx, chassis_vy;     // 将云台系的速度投影到底盘
 static float vt_lf, vt_rf, vt_lb, vt_rb; // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
 static float sin_theta, cos_theta;//麦轮解算用
 static float vx,vy;//获取车体信息要用到的中间变量
+static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
 
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 static float cnt=0;
@@ -254,6 +255,5 @@ void ChassisTask()
     SendJudgeData();
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
-     
     CANCommSend(chasiss_can_comm, (void *)&chassis_feedback_data);
 }
