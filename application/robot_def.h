@@ -142,14 +142,14 @@ typedef struct
     float loader_total_angle;//当前角度
     uint8_t first_flag;//用于读取初始化电机角度
     float rest_bullet;
-    uint16_t shoot_heat_l;//枪口当前热量(计算值)
-    uint16_t shoot_heat_r;//枪口当前热量(计算值)
 
     float heat_k;//控制热量系数
     //读取裁判系统时间间隔
     float last_time;
     float last_bullet_speed;
     */
+    uint16_t shoot_heat_l;//枪口当前热量(计算值)
+    uint16_t shoot_heat_r;//枪口当前热量(计算值)
     uint8_t shoot_l;
     uint8_t shoot_r;
 }cal_bullet_t;
