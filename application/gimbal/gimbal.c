@@ -33,7 +33,7 @@ void GimbalInit()
         .controller_param_init_config = {
             .angle_PID = {
                 .Kp = 7, // 6
-                .Ki = 2,
+                .Ki = 4,
                 .Kd =0.7,//0.0.6
                 .DeadBand = 0.01,
                 .Improve = PID_ChangingIntegrationRate | PID_Derivative_On_Measurement,
@@ -141,6 +141,33 @@ static void GimbalStateSet()
         break;
     }
 }
+
+static void AIM_PID()
+{
+    yaw_motor->motor_controller.angle_PID.Kp= 0;
+    yaw_motor->motor_controller.angle_PID.Ki= 0;
+    yaw_motor->motor_controller.angle_PID.Kd= 0;
+    yaw_motor->motor_controller.angle_PID.CoefA= 0;
+    yaw_motor->motor_controller.angle_PID.CoefB= 0;
+
+    yaw_motor->motor_controller.speed_PID.Kp= 0;
+    yaw_motor->motor_controller.speed_PID.Ki= 0;
+
+    pitch_motor->motor_controller.angle_PID.Kp= 0;
+    pitch_motor->motor_controller.angle_PID.Ki= 0;
+    pitch_motor->motor_controller.angle_PID.Kd= 0;
+    pitch_motor->motor_controller.angle_PID.CoefA= 0;
+    pitch_motor->motor_controller.angle_PID.CoefB= 0;
+    pitch_motor->motor_controller.speed_PID.Kp= 0;
+    pitch_motor->motor_controller.speed_PID.Ki= 0;
+}
+
+static void Normal_PID()
+{
+
+}
+
+
 
 /**
  * @brief 发送反馈信息给终端

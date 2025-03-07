@@ -15,9 +15,7 @@
 #include "bsp_dwt.h"
 #include "bsp_log.h"
 
-// 私有宏,自动将编码器转换成角度值
-#define YAW_ALIGN_ANGLE (YAW_CHASSIS_ALIGN_ECD * ECD_ANGLE_COEF_DJI) // 对齐时的角度,0-360
-#define PTICH_HORIZON_ANGLE (PITCH_HORIZON_ECD * ECD_ANGLE_COEF_DJI) // pitch水平时电机的角度,0-360
+
 
 /* cmd应用包含的模块实例指针和交互信息存储*/
 #include "can_comm.h"
@@ -144,7 +142,7 @@ static void ShootCheck()
         //拨盘速度小于100，且超过1s，认为卡弹，进行回退
         if(abs(shoot_fetch_data.speed)<100&&DWT_GetTimeline_s()>1)
         {
-            shoot_fetch_data.loader_error_flag++;
+            shoot_fetch_data.loader_error_flag=1;
         }
         if(shoot_fetch_data.loader_error_flag==1)
         {
@@ -181,11 +179,10 @@ static void BasicFunctionSet()
 static void VisionJudge()
 {
     cnt1=sin(DWT_GetTimeline_s());
-    if(cnt1>-0.1&&cnt1<1&&DataLebel.cmd_error_flag==0)
+    if(cnt1>0.1&&cnt1<1&&DataLebel.cmd_error_flag==0)
     {
         gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
     }
-
     if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
     {
         DataLebel.vision_flag=1;
@@ -196,12 +193,18 @@ static void VisionJudge()
         {
             aim_success_buzzer->loudness=0.5*(1/abs(minipc_recv_data->Vision.yaw));
         }
-        else if(abs(minipc_recv_data->Vision.yaw)<1 && abs(minipc_recv_data->Vision.pitch)<1)
+
+        if(abs(minipc_recv_data->Vision.pitch)<1)
         {
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
         }
+        else
+        {
+            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+        }
+
         if(minipc_recv_data->Vision.deep-gimbal_cmd_send.last_deep==0&&cnt1<-0.2)
         {
             DataLebel.cmd_error_flag=1;
@@ -211,6 +214,7 @@ static void VisionJudge()
             AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
+    
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
@@ -218,7 +222,6 @@ static void VisionJudge()
         DataLebel.vision_flag=0;
         AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
     }
-
 }
 /********************************RemoteControl****************************/
 
@@ -272,10 +275,6 @@ static void ShootRC()
         //拨盘反转
         shoot_cmd_send.load_mode=LOAD_REVERSE;
     }
-    else if (rc_data->rc.dial<-200)
-    {
-        shoot_cmd_send.load_mode=LOAD_REVERSE;
-    }
     else
     {
         shoot_cmd_send.load_mode=LOAD_STOP;
@@ -293,18 +292,15 @@ static void GimbalAC()
     //没发信息时巡逻
     if(DataLebel.vision_flag==0)
     {
-        gimbal_cmd_send.yaw-=0.4;
+        gimbal_cmd_send.yaw-=0.1;
         DataLebel.t_pitch = (float32_t)DWT_GetTimeline_s();
         //上方不扫，减少扫描范围
-        gimbal_cmd_send.pitch =20*abs(sin(2.5*DataLebel.t_pitch));
+        gimbal_cmd_send.pitch =20*abs(sin(2.0*DataLebel.t_pitch));
     }
     else
     {    
-        if(abs(minipc_recv_data->Vision.pitch)<400&&abs(minipc_recv_data->Vision.yaw)<400)
-        {
-            gimbal_cmd_send.yaw-=0.0073f*minipc_recv_data->Vision.yaw;   //往右获得的yaw是减
-            gimbal_cmd_send.pitch -= 0.009f*minipc_recv_data->Vision.pitch;
-        }
+            gimbal_cmd_send.yaw-=0.0037f*minipc_recv_data->Vision.yaw;   //往右获得的yaw是减
+            gimbal_cmd_send.pitch -= 0.0038f*minipc_recv_data->Vision.pitch;
     }
 }
 
@@ -390,7 +386,6 @@ static void SendJudgeShootData()
     shoot_cmd_send.bullet_num=chassis_fetch_data.bullet_num;
     shoot_cmd_send.left_bullet_heat=chassis_fetch_data.left_bullet_heat;
     shoot_cmd_send.right_bullet_heat=chassis_fetch_data.right_bullet_heat;
-
 }
 /* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
 void RobotCMDTask()
