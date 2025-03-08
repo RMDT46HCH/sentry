@@ -142,30 +142,6 @@ static void GimbalStateSet()
     }
 }
 
-static void AIM_PID()
-{
-    yaw_motor->motor_controller.angle_PID.Kp= 0;
-    yaw_motor->motor_controller.angle_PID.Ki= 0;
-    yaw_motor->motor_controller.angle_PID.Kd= 0;
-    yaw_motor->motor_controller.angle_PID.CoefA= 0;
-    yaw_motor->motor_controller.angle_PID.CoefB= 0;
-
-    yaw_motor->motor_controller.speed_PID.Kp= 0;
-    yaw_motor->motor_controller.speed_PID.Ki= 0;
-
-    pitch_motor->motor_controller.angle_PID.Kp= 0;
-    pitch_motor->motor_controller.angle_PID.Ki= 0;
-    pitch_motor->motor_controller.angle_PID.Kd= 0;
-    pitch_motor->motor_controller.angle_PID.CoefA= 0;
-    pitch_motor->motor_controller.angle_PID.CoefB= 0;
-    pitch_motor->motor_controller.speed_PID.Kp= 0;
-    pitch_motor->motor_controller.speed_PID.Ki= 0;
-}
-
-static void Normal_PID()
-{
-
-}
 
 
 
@@ -176,6 +152,7 @@ static void SendGimbalData()
 {
     gimbal_feedback_data.gimbal_imu_data = *gimbal_IMU_data;
     gimbal_feedback_data.yaw_motor_single_round_angle = yaw_motor->measure.angle_single_round;
+    gimbal_feedback_data.total_round=yaw_motor->measure.total_round;
 }
 
 /* 机器人云台控制核心任务 */

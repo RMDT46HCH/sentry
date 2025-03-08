@@ -45,6 +45,10 @@ static Shoot_Upload_Data_s shoot_fetch_data; // 从发射获取的反馈信息
 static Robot_Status_e robot_state; // 机器人整体工作状态
 static DataLebel_t DataLebel;
 static float cnt1,cnt2;
+static float yaw_init;
+static float used_yaw,patrol_angle;
+int32_t init_total_round,Round_Patrol_init_totol_round,mid_round_patrol_total_round,round_patrol_total_round;
+uint8_t yaw_init_flag=0,round_flag,mid_round_flag;
 #include "can_comm.h"
 
 void RobotCMDInit()
@@ -194,7 +198,7 @@ static void VisionJudge()
             aim_success_buzzer->loudness=0.5*(1/abs(minipc_recv_data->Vision.yaw));
         }
 
-        if(abs(minipc_recv_data->Vision.pitch)<1)
+        if(abs(minipc_recv_data->Vision.pitch)<4&&abs(minipc_recv_data->Vision.yaw)<4)
         {
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
@@ -248,7 +252,11 @@ static void ChassisRC()
     {
         chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
     }
-    if (switch_is_up(rc_data[TEMP].rc.switch_left))
+    else if (switch_is_mid(rc_data[TEMP].rc.switch_left))
+    {
+        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+    }
+    else if (switch_is_up(rc_data[TEMP].rc.switch_left))
     {
         chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
     }
@@ -282,6 +290,67 @@ static void ShootRC()
 }
 /********************************AutoControl****************************/
 
+static void GetGimbalInitImu()
+{
+    if(yaw_init_flag==0)
+    {
+        yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
+        patrol_angle = yaw_init;
+        init_total_round=gimbal_fetch_data.total_round;
+        yaw_init_flag=1;
+    }
+}
+static void MidRoundPatrol()
+{
+    /*
+        used_yaw=patrol_angle-yaw_init+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
+        static int direction = 1; // 1 for increasing, -1 for decreasing
+
+        patrol_angle += 0.15f * direction;
+
+        // 检查巡逻角度是否超过180度或小于0度
+        if(used_yaw >= 70.0f+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round))
+        {
+            used_yaw =  70.0f+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
+            direction = -1; // 改变方向
+        }
+        else if(used_yaw <= -70+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round))
+        {
+            used_yaw=-70+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
+            direction = 1; // 改变方向
+        }
+        gimbal_cmd_send.yaw = used_yaw;
+
+        round_flag=0;
+        */
+        used_yaw=patrol_angle-yaw_init+round_patrol_total_round*360;
+        static int direction = 1; // 1 for increasing, -1 for decreasing
+
+        patrol_angle += 0.15f * direction;
+
+        if(used_yaw > 70.0f+round_patrol_total_round*360)
+        {
+            used_yaw =  70.0f+round_patrol_total_round*360;
+            direction = -1; // 改变方向
+        }
+        else if(used_yaw <- 70.0f+round_patrol_total_round*360)
+        {
+            used_yaw=-70+round_patrol_total_round*360;
+            direction = 1; // 改变方向
+        }
+        gimbal_cmd_send.yaw = used_yaw;
+}
+
+static void RoundPatrol()
+{
+    if(round_flag==0)
+    {
+        Round_Patrol_init_totol_round=gimbal_fetch_data.total_round;
+        round_flag=1;
+    }
+    round_patrol_total_round=gimbal_fetch_data.total_round-Round_Patrol_init_totol_round;
+    gimbal_cmd_send.yaw+=0.15;
+}
 /**
  * @brief 云台控制，视觉发的yaw时距离敌人装甲板中心的偏差值
  *
@@ -289,18 +358,31 @@ static void ShootRC()
 static void GimbalAC()
 {
     VisionJudge();
+    GetGimbalInitImu();
     //没发信息时巡逻
     if(DataLebel.vision_flag==0)
     {
-        gimbal_cmd_send.yaw-=0.1;
         DataLebel.t_pitch = (float32_t)DWT_GetTimeline_s();
         //上方不扫，减少扫描范围
         gimbal_cmd_send.pitch =20*abs(sin(2.0*DataLebel.t_pitch));
+
+        if (switch_is_mid(rc_data[TEMP].rc.switch_left))
+        {
+             RoundPatrol();
+        }
+        else
+        MidRoundPatrol();
     }
+
     else
-    {    
-            gimbal_cmd_send.yaw-=0.0037f*minipc_recv_data->Vision.yaw;   //往右获得的yaw是减
-            gimbal_cmd_send.pitch -= 0.0038f*minipc_recv_data->Vision.pitch;
+    {
+            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
+            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
+            else
+            {
+                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
+            }
+            gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
     }
 }
 
@@ -365,6 +447,7 @@ static void RemoteDataDeal()
 
     else if (switch_is_up(rc_data[TEMP].rc.switch_right)) 
     {
+
         BasicFunctionSet();
         GimbalAC();
         // //等巡航搞完改为ChassisAC();

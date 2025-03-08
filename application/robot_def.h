@@ -250,6 +250,7 @@ typedef struct
     attitude_t gimbal_imu_data;
     uint16_t   yaw_motor_single_round_angle;
     uint8_t cmd_error_flag;
+    int32_t total_round; // 总圈数,注意方向
 } Gimbal_Upload_Data_s;
 
 typedef struct
