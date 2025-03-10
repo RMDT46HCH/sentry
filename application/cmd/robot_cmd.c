@@ -1,6 +1,7 @@
 // app
 #include "robot_def.h"
 #include "robot_cmd.h"
+
 // module
 #include "remote_control.h"
 #include "ins_task.h"
@@ -10,6 +11,7 @@
 #include "dji_motor.h"
 #include "buzzer.h"
 #include "rm_referee.h"
+#include "can_comm.h"
 
 // bsp
 #include "bsp_dwt.h"
@@ -18,51 +20,54 @@
 
 
 /* cmd应用包含的模块实例指针和交互信息存储*/
-#include "can_comm.h"
-static CANCommInstance *cmd_can_comm; // 双板通信
+/************************************** HuartUsed **************************************/
+static RC_ctrl_t *rc_data;                      // 遥控器数据,初始化时返回
+static Minipc_Recv_s *minipc_recv_data;         //小电脑接收数据,初始化时返回
+static Minipc_Send_s  minipc_send_data;         // 视觉发送数据
 
-static  BuzzzerInstance *cmd_error_buzzer;
-static  BuzzzerInstance *aim_success_buzzer;
+/**************************************  CANUsed  **************************************/
+static CANCommInstance *cmd_can_comm;           // 双板通信
 
+/**************************************ChassisUsed**************************************/
 static Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
 
-static RC_ctrl_t *rc_data;              // 遥控器数据,初始化时返回
+/************************************** GimbalUsed **************************************/
+static Publisher_t *gimbal_cmd_pub;              // 云台控制消息发布者
+static Subscriber_t *gimbal_feed_sub;            // 云台反馈信息订阅者
+static Gimbal_Ctrl_Cmd_s gimbal_cmd_send;        // 传递给云台的控制信息
+static Gimbal_Upload_Data_s gimbal_fetch_data;   // 从云台获取的反馈信息
 
-static Minipc_Recv_s *minipc_recv_data; //小电脑接收数据指针,初始化时返回
-static Minipc_Send_s  minipc_send_data;  // 视觉发送数据
+/**************************************  ShootUsed  **************************************/
+static Publisher_t *shoot_cmd_pub;              // 发射控制消息发布者
+static Subscriber_t *shoot_feed_sub;            // 发射反馈信息订阅者
+static Shoot_Ctrl_Cmd_s shoot_cmd_send;         // 传递给发射的控制信息
+static Shoot_Upload_Data_s shoot_fetch_data;    // 从发射获取的反馈信息
 
-static Publisher_t *gimbal_cmd_pub;            // 云台控制消息发布者
-static Subscriber_t *gimbal_feed_sub;          // 云台反馈信息订阅者
-static Gimbal_Ctrl_Cmd_s gimbal_cmd_send;      // 传递给云台的控制信息
-static Gimbal_Upload_Data_s gimbal_fetch_data; // 从云台获取的反馈信息
-
-static Publisher_t *shoot_cmd_pub;           // 发射控制消息发布者
-static Subscriber_t *shoot_feed_sub;         // 发射反馈信息订阅者
-static Shoot_Ctrl_Cmd_s shoot_cmd_send;      // 传递给发射的控制信息
-static Shoot_Upload_Data_s shoot_fetch_data; // 从发射获取的反馈信息
-
-static Robot_Status_e robot_state; // 机器人整体工作状态
+/****************************************  Other  ****************************************/
 static DataLebel_t DataLebel;
-static float cnt1,cnt2;
+static  BuzzzerInstance *aim_success_buzzer;
+static float cnt1;
 static float yaw_init;
 static float used_yaw,patrol_angle;
-int32_t init_total_round,Round_Patrol_init_totol_round,mid_round_patrol_total_round,round_patrol_total_round;
-uint8_t yaw_init_flag=0,round_flag,mid_round_flag;
-#include "can_comm.h"
+int32_t init_total_round,Round_Patrol_init_totol_round,round_patrol_total_round;
+uint8_t yaw_init_flag=0,round_flag;
 
+/********************************************************************************************
+***************************************      Init     ***************************************
+*********************************************************************************************/
 void RobotCMDInit()
 {
-    rc_data = RemoteControlInit(&huart3);   // 遥控器通信串口初始化
-    minipc_recv_data=minipcInit(&huart1); // 视觉通信串口初始化
-    //创建一个用于发布给云台控制话题的发布者
+/**************************************  HuartInit  **************************************/
+    rc_data = RemoteControlInit(&huart3);       // 遥控器通信串口初始化
+    minipc_recv_data=minipcInit(&huart1);       // 视觉通信串口初始化
+/************************************** GimbalCommInit **************************************/
     gimbal_cmd_pub = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
-    //创建一个用于订阅云台反馈话题的订阅者
     gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
-    //创建一个用于发布给发射机构控制话题的订阅者
+/************************************** ShootCommInit **************************************/
     shoot_cmd_pub = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
-    //创建一个用于发布给发射机构反馈话题的订阅者
     shoot_feed_sub = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
+/************************************** ChassisCommInit **************************************/
     // 双板CAN通信初始化  
     CANComm_Init_Config_s comm_conf = {
         .can_config = 
@@ -76,31 +81,30 @@ void RobotCMDInit()
     };
     cmd_can_comm = CANCommInit(&comm_conf);
 
-    // 蜂鸣器初始化  
-    Buzzer_config_s cmd_buzzer_config={
-        .alarm_level=ALARM_LEVEL_HIGH,
-        .octave=OCTAVE_1,
-    };
-
+/**************************************   BufferInit  **************************************/
     Buzzer_config_s aim_success_buzzer_config= {
         .alarm_level=ALARM_LEVEL_ABOVE_MEDIUM,
         .octave=OCTAVE_2,
     };
 
-    cmd_error_buzzer = BuzzerRegister(&cmd_buzzer_config);
     aim_success_buzzer= BuzzerRegister(&aim_success_buzzer_config);
-
+/**************************************   OtherInit  **r************************************/
     shoot_fetch_data.over_heat_flag=0;
     //让云台水平
     gimbal_cmd_send.pitch = 0;
     //将标志位全都置0
     memset(&DataLebel,0,sizeof(DataLebel));
-    shoot_cmd_send.friction_mode = FRICTION_OFF;
 }
+
+
+/*********************************************************************************************
+***************************************      Function      ***********************************
+**********************************************************************************************/
+
+/**************************************      BasicSet      *************************************/
 /**
  * @brief 当前云台电机角度计算和零位的误差，计算出云台与底盘的偏角，用于底盘解算
  *        
- *
  */
 static void CalcOffsetAngle()
 {
@@ -128,6 +132,8 @@ static void CalcOffsetAngle()
  */
 static void GimbalLocationLimit()
 {
+    //云台基本模式设定
+    gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
     if(gimbal_cmd_send.pitch<PITCH_MIN_ANGLE)
     gimbal_cmd_send.pitch=PITCH_MIN_ANGLE;
     else if (gimbal_cmd_send.pitch>PITCH_MAX_ANGLE)
@@ -161,22 +167,6 @@ static void ShootCheck()
     }
 }
 
-/**
- * @brief 开启机器人时的共性设置
- *
- */
-static void BasicFunctionSet()
-{
-    //云台基本模式设定
-    gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-
-    GimbalLocationLimit();
-
-    //发射基本模式设定
-    shoot_cmd_send.shoot_mode = SHOOT_ON;
-    shoot_cmd_send.friction_mode = FRICTION_ON;
-    shoot_cmd_send.shoot_rate=8;
-}
 /**
  * @brief 判断视觉有没有发信息
  */
@@ -227,6 +217,22 @@ static void VisionJudge()
         AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
     }
 }
+
+/**
+ * @brief 开启机器人时的共性设置
+ *
+ */
+static void BasicFunctionSet()
+{
+    VisionJudge();
+    GimbalLocationLimit();
+    CalcOffsetAngle();
+    //发射基本模式设定
+    shoot_cmd_send.shoot_mode = SHOOT_ON;
+    shoot_cmd_send.friction_mode = FRICTION_ON;
+    shoot_cmd_send.shoot_rate=8;
+}
+
 /********************************RemoteControl****************************/
 
 /**
@@ -237,7 +243,6 @@ static void GimbalRC()
 {
     gimbal_cmd_send.yaw -= 0.0005f * (float)rc_data[TEMP].rc.rocker_right_x;//0
     gimbal_cmd_send.pitch -= 0.0003f * (float)rc_data[TEMP].rc.rocker_right_y;
-    DataLebel.cmd_error_flag=0;
 }
 /**
  * @brief 底盘控制，发送x和y速度
@@ -302,27 +307,7 @@ static void GetGimbalInitImu()
 }
 static void MidRoundPatrol()
 {
-    /*
-        used_yaw=patrol_angle-yaw_init+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
-        static int direction = 1; // 1 for increasing, -1 for decreasing
 
-        patrol_angle += 0.15f * direction;
-
-        // 检查巡逻角度是否超过180度或小于0度
-        if(used_yaw >= 70.0f+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round))
-        {
-            used_yaw =  70.0f+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
-            direction = -1; // 改变方向
-        }
-        else if(used_yaw <= -70+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round))
-        {
-            used_yaw=-70+360*(gimbal_fetch_data.total_round-init_total_round+round_patrol_total_round);
-            direction = 1; // 改变方向
-        }
-        gimbal_cmd_send.yaw = used_yaw;
-
-        round_flag=0;
-        */
         used_yaw=patrol_angle-yaw_init+round_patrol_total_round*360;
         static int direction = 1; // 1 for increasing, -1 for decreasing
 
@@ -352,7 +337,7 @@ static void RoundPatrol()
     gimbal_cmd_send.yaw+=0.15;
 }
 /**
- * @brief 云台控制，视觉发的yaw时距离敌人装甲板中心的偏差值
+ * @brief 云台自动控制，视觉发的yaw时距离敌人装甲板中心的偏差值
  *
  */
 static void GimbalAC()
@@ -371,7 +356,9 @@ static void GimbalAC()
              RoundPatrol();
         }
         else
-        MidRoundPatrol();
+        {
+            MidRoundPatrol();
+        }
     }
 
     else
@@ -416,6 +403,8 @@ static void ShootAC()
         shoot_cmd_send.load_mode=LOAD_STOP;
     }
 }
+/******************************** STOP ****************************/
+
 /**
  * @brief 停止
  *
@@ -428,13 +417,15 @@ static void AnythingStop()
     shoot_cmd_send.friction_mode = FRICTION_OFF;
     shoot_cmd_send.load_mode = LOAD_STOP;
     AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+    DataLebel.cmd_error_flag=0;
 }
 
+/**************************************  SetMode   **************************************/
 /**
  * @brief 
  *
  */
-static void RemoteDataDeal()
+static void ControlDataDeal()
 {
     if (switch_is_mid(rc_data[TEMP].rc.switch_right)) 
     {
@@ -442,24 +433,20 @@ static void RemoteDataDeal()
         GimbalRC();
         ChassisRC();
         ShootRC();
-        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
     }
-
     else if (switch_is_up(rc_data[TEMP].rc.switch_right)) 
     {
-
         BasicFunctionSet();
         GimbalAC();
-        // //等巡航搞完改为ChassisAC();
-         ChassisAC();
-         ShootAC();
+        ChassisAC();
+        ShootAC();
     }
     else if (switch_is_down(rc_data[TEMP].rc.switch_right)) 
     {
         AnythingStop();
     }
 }
-
+/**************************************  SendData   **************************************/
 /**
  * @brief  用于发送来自底盘的裁判信息给发射机构,用于枪管切换
  */
@@ -470,28 +457,32 @@ static void SendJudgeShootData()
     shoot_cmd_send.left_bullet_heat=chassis_fetch_data.left_bullet_heat;
     shoot_cmd_send.right_bullet_heat=chassis_fetch_data.right_bullet_heat;
 }
+
+static void JudgeEnemy()
+{
+    minipc_send_data.Vision.detect_color=chassis_fetch_data.enemy_color;
+}
+
+
+/*********************************************************************************************
+***************************************      TASK      ***************************************
+**********************************************************************************************/
 /* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
 void RobotCMDTask()
 {
+/**************************************  GetFetchData  **************************************/
     // 从其他应用获取回传数据
     chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
-
     //获取订阅者信息
     SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
     SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
 
-
-    // 根据gimbal的反馈值计算云台和底盘正方向的夹角
-    CalcOffsetAngle();
-
+/*************************************     Control     **************************************/
     //在不同挡位下设置对应的不同模式
-    RemoteDataDeal();
-
+    ControlDataDeal();
+/**************************************    SendData    **************************************/
     // 设置视觉需要用到的数据
-    VisionSetFlag();
-    VisionSetAltitude(gimbal_fetch_data.gimbal_imu_data.Yaw,gimbal_fetch_data.gimbal_imu_data.Pitch,
-                        gimbal_fetch_data.gimbal_imu_data.Roll);
-
+    JudgeEnemy();
     // 设置巡航需要用到的数据       
     NavSetMessage(chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,gimbal_fetch_data.gimbal_imu_data.Yaw,chassis_fetch_data.Occupation
                     ,chassis_fetch_data.remain_HP,chassis_fetch_data.self_infantry_HP,chassis_fetch_data.self_hero_HP
@@ -501,14 +492,11 @@ void RobotCMDTask()
 
     //发送给小电脑数据
     SendMinipcData();
-
     //发送信息给发射机构
     SendJudgeShootData();
-    
     //推送发布者信息
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
-    
     // 双板通信
     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
 }

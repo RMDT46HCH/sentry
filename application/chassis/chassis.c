@@ -1,54 +1,44 @@
+//app
 #include "chassis.h"
 #include "robot_def.h"
+
+//module
 #include "dji_motor.h"
 #include "super_cap.h"
 #include "message_center.h"
 #include "ins_task.h"
 #include "general_def.h"
-#include "bsp_dwt.h"
-#include "arm_math.h"
 #include "buzzer.h"
 #include "rm_referee.h"
 #include "referee_task.h"
-
-
-/* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
- // 使用板载IMU获取底盘转动角速度（但初始化pid那里写的会很乱，不适合代码的可读性）
 #include "can_comm.h"
-#include "ins_task.h"
-static CANCommInstance *chassis_can_comm; // 双板通信CAN comm
 
-static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令（发布中心发给底盘的）
-static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
+//bsp
+#include "bsp_dwt.h"
+#include "arm_math.h"
+/************************************** CommUsed **************************************/
+/* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
+static CANCommInstance *chassis_can_comm;               // 双板通信CAN comm
+static Chassis_Ctrl_Cmd_s chassis_cmd_recv;             // 底盘接收到的控制命令（发布中心发给底盘的）
+static Chassis_Upload_Data_s chassis_feedback_data;     // 底盘回传的反馈数据
 
+static Referee_Interactive_info_t ui_data;              // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
+static referee_info_t* referee_data;                    // 用于获取裁判系统的数据
+
+
+/*********************************** CalculateSpeed ***********************************/
 static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; 
-
-static referee_info_t* referee_data;        // 用于获取裁判系统的数据
-
-
-
-/* 私有函数计算的中介变量,设为静态避免参数传递的开销 */
-static float chassis_vx, chassis_vy;     // 将云台系的速度投影到底盘
-static float vt_lf, vt_rf, vt_lb, vt_rb; // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
-static float sin_theta, cos_theta;//麦轮解算用
-static float vx,vy;//获取车体信息要用到的中间变量
-static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
-
-static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
+static float chassis_vx, chassis_vy;                    // 将云台系的速度投影到底盘
+static float vt_lf, vt_rf, vt_lb, vt_rb;                // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
+static float sin_theta, cos_theta;                      //麦轮解算用
+static float vx,vy;                                     //获取车体信息要用到的中间变量
 static float cnt=0;
-static float chassis_power_buff= 1;
-static float rotate_speed_buff = 1;
 
-#define LF_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
-#define RF_CENTER ((HALF_TRACK_WIDTH - CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
-#define LB_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE + CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
-#define RB_CENTER ((HALF_TRACK_WIDTH - CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE + CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
 
 void ChassisInit()
 {
-    /***************************MOTOR_INIT******************************/
+/***************************MOTOR_INIT******************************/
     // 底盘电机的初始化，包括什么通信、什么id、pid及电机安装是正装还是反装（相当于给最终输出值添负号）及型号
-
     // 四个轮子的参数一样,改tx_id和反转标志位即可
     Motor_Init_Config_s chassis_motor_config = {
         .can_init_config.can_handle = &hcan1,
@@ -98,10 +88,10 @@ void ChassisInit()
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     motor_rb = DJIMotorInit(&chassis_motor_config);
 
-    /***************************REFEREE_COMM_INIT******************************/
-    referee_data   = UITaskInit(&huart6,&ui_data); // 裁判系统初始化
+/************************************** RefereeCommInit **************************************/
+    referee_data   = UITaskInit(&huart6,&ui_data);
 
-    /***************************BOARD_COMM_INIT******************************/
+/************************************** ChassisCommInit **************************************/
     //双板通信
     CANComm_Init_Config_s comm_conf = {
         .can_config = {
@@ -116,7 +106,7 @@ void ChassisInit()
     chassis_can_comm = CANCommInit(&comm_conf); // can comm初始化
 }
 
-    /***************************SEND_TO_MOTOR******************************/
+/*****************************************MoveChassis********************************************/
 static void ChassisStateSet()
 {
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE)
@@ -134,13 +124,13 @@ static void ChassisStateSet()
         DJIMotorEnable(motor_rb);
     }
 }
+
 /**
  * @brief  
  */
 static void ChassisRotateSet()
 {
     cnt = (float32_t)DWT_GetTimeline_s();//用于变速小陀螺
-    // 根据控制模式设定旋转速度
     switch (chassis_cmd_recv.chassis_mode)
     {
         case CHASSIS_NO_FOLLOW: // 底盘不旋转,但维持全向机动
@@ -148,16 +138,17 @@ static void ChassisRotateSet()
         break;
 
         case CHASSIS_ROTATE: // 变速小陀螺
-            chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*rotate_speed_buff;
+            chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*4.75;
         break;
 
         default:
         break;
     }
 }
+
 /**
  * @brief 计算每个底盘电机的输出,底盘正运动学解算
- *        
+ *                                
  */
 static void MecanumCalculate()
 {   
@@ -167,27 +158,25 @@ static void MecanumCalculate()
     chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta; 
     chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
 
-    vt_lf = chassis_vx - chassis_vy - chassis_cmd_recv.wz * LF_CENTER;
-    vt_lb = chassis_vx + chassis_vy - chassis_cmd_recv.wz * LB_CENTER;
-    vt_rb = chassis_vx - chassis_vy + chassis_cmd_recv.wz * RB_CENTER;
-    vt_rf = chassis_vx + chassis_vy + chassis_cmd_recv.wz * RF_CENTER;
+    vt_lf = chassis_vx - chassis_vy - chassis_cmd_recv.wz ;
+    vt_lb = chassis_vx + chassis_vy - chassis_cmd_recv.wz ;
+    vt_rb = chassis_vx - chassis_vy + chassis_cmd_recv.wz ;
+    vt_rf = chassis_vx + chassis_vy + chassis_cmd_recv.wz ;
 }
 
 /**
  * @brief
  *
  */
-static void LimitChassisOutput()
+static void ChassisOutput()
 { 
-    rotate_speed_buff = 4.75;
     DJIMotorSetRef(motor_lf, vt_lf);
     DJIMotorSetRef(motor_rf, vt_rf);
     DJIMotorSetRef(motor_lb, vt_lb);
     DJIMotorSetRef(motor_rb, vt_rb);
 }
 
-
-
+/*****************************************SendData********************************************/
 /**
  * @brief 根据每个轮子的速度反馈,计算底盘的实际运动速度,逆运动解算，并发给巡航底盘实时数据             
  */
@@ -201,7 +190,7 @@ static void SendChassisData()
 }
 
 /**
- * @brief  将裁判系统的信息发给巡航，让其进行决策。
+ * @brief  将裁判系统的信息发给巡航、视觉让其进行决策。
  */
 static void SendJudgeData()
 {
@@ -211,6 +200,8 @@ static void SendJudgeData()
     
     if(referee_data->GameRobotState.robot_id>7)
     {
+        chassis_feedback_data.enemy_color=COLOR_RED;
+
         chassis_feedback_data.remain_HP=referee_data->GameRobotHP.blue_7_robot_HP;
         chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.blue_1_robot_HP;
         chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.blue_3_robot_HP;
@@ -221,6 +212,7 @@ static void SendJudgeData()
     }
     else
     {
+        chassis_feedback_data.enemy_color=COLOR_BLUE;
         chassis_feedback_data.remain_HP=referee_data->GameRobotHP.red_7_robot_HP;
         chassis_feedback_data.self_hero_HP=referee_data->GameRobotHP.red_1_robot_HP;
         chassis_feedback_data.self_infantry_HP=referee_data->GameRobotHP.red_3_robot_HP;
@@ -234,23 +226,27 @@ static void SendJudgeData()
     chassis_feedback_data.bullet_num=referee_data->ProjectileAllowance.projectile_allowance_17mm;
     chassis_feedback_data.bullet_speed=referee_data->ShootData.bullet_speed;
 }
+
+/*********************************************************************************************************
+ *********************************************      TASK     *********************************************
+**********************************************************************************************************/
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
 {
+/********************************************   GetRecvData  *********************************************/ 
     // 获取新的控制信息
     chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chassis_can_comm);
-    
+/****************************************     ControlChassis     *****************************************/
     //底盘动与不动
     ChassisStateSet();
     //旋转模式及速度设定
     ChassisRotateSet();
-
     // 根据云台和底盘的角度offset将控制量映射到底盘坐标系
     // 根据控制模式进行正运动学解算,计算底盘各个电机的速度
     MecanumCalculate();
-
     // 根据裁判系统的反馈数据设定闭环参考值
-    LimitChassisOutput();
+    ChassisOutput();
+ /*******************************************     SendData     ********************************************/
     //将裁判系统的信息发给巡航，让其进行决策。
     SendJudgeData();
     // 根据电机的反馈速度计算真实速度发给巡航

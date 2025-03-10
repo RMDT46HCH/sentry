@@ -63,21 +63,6 @@
  * @brief 这些枚举类型和结构体会作为CMD控制数据和各应用的反馈数据的一部分
  *
  */
-// 机器人状态
-typedef enum
-{
-    ROBOT_STOP = 0,
-    ROBOT_READY,
-} Robot_Status_e;
-
-// 应用状态
-typedef enum
-{
-    APP_OFFLINE = 0,
-    APP_ONLINE,
-    APP_ERROR,
-} App_Status_e;
-
 // 底盘模式设置
 /**
  * @brief 后续考虑修改为云台跟随底盘,而不是让底盘去追云台,云台的惯量比底盘小.
@@ -147,18 +132,6 @@ typedef struct
 
 typedef struct
 {
-    /*
-    float last_loader_total_angle;//用于储存上一次计算时角度
-    float last_loader_total_heat_angle;//用于储存上一次计算热量时用到的角度
-    float loader_total_angle;//当前角度
-    uint8_t first_flag;//用于读取初始化电机角度
-    float rest_bullet;
-
-    float heat_k;//控制热量系数
-    //读取裁判系统时间间隔
-    float last_time;
-    float last_bullet_speed;
-    */
     uint16_t shoot_heat_l;//枪口当前热量(计算值)
     uint16_t shoot_heat_r;//枪口当前热量(计算值)
     uint8_t shoot_l;

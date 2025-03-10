@@ -7,19 +7,21 @@
 #include "general_def.h"
 #include "rm_referee.h"
 
-/* 对于双发射机构的机器人,将下面的数据封装成结构体即可,生成两份shoot应用实例 */
+/************************************* ShootUsed *************************************/
 static DJIMotorInstance *friction_l, *friction_r, *loader; // 拨盘电机
+static ServoInstance *change;
+/************************************** CommUsed **************************************/
 static Publisher_t *shoot_pub;
 static Shoot_Ctrl_Cmd_s shoot_cmd_recv; // 来自cmd的发射控制信息
 static Subscriber_t *shoot_sub;
 static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信息
+
+/************************************** HeatUsed **************************************/
 static cal_bullet_t cal_bullet;
-static ServoInstance *change;
 
 void ShootInit()
 {
-    /***************************MOTOR_INIT******************************/
-
+/************************************** MotorInit **************************************/
     // 摩擦轮电机的初始化，设置can通信如句柄、id，设置pid，及电机安装是正转还是反转（相当于给最终输出值添负号）及电机型号
     Motor_Init_Config_s friction_config = {
         .can_init_config = 
@@ -93,7 +95,7 @@ void ShootInit()
     };
     loader_config.can_init_config.tx_id=3;
     loader = DJIMotorInit(&loader_config);
-
+/************************************** ServoInit **************************************/
     //舵机初始化，用于切换枪管
     Servo_Init_Config_s config= {
         .htim=&htim1,
@@ -104,16 +106,23 @@ void ShootInit()
     };
     // 设置好参数后进行初始化并保留返回的指针
     change = ServoInit(&config);
+
+/************************************** ShootCommInit **************************************/
     //创建发布、订阅者
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
-
+/**************************************    HeatInit    *************************************/
     memset(&cal_bullet,0,sizeof(cal_bullet));
     cal_bullet.shoot_l=1;
     cal_bullet.shoot_r=0;
 }
 
 
+/*********************************************************************************************
+***************************************      Function      ***********************************
+**********************************************************************************************/
+
+/**************************************   CalculateHeat   *************************************/
 static void CalHeat()
 {
     //切换到右枪管
@@ -123,7 +132,6 @@ static void CalHeat()
         //先等1s，等切换枪管完再发射
         if(DWT_GetTimeline_s()>1)
         shoot_feedback_data.over_heat_flag=0;
-
     }
     //切换到左枪管
     else if(cal_bullet.shoot_l == 1&&cal_bullet.shoot_r == 0)
@@ -169,28 +177,8 @@ static void CalHeat()
     {
         shoot_feedback_data.over_heat_flag=0;
     }
-    /*
-    // 记录初始情况下的电机角度和时间
-    if (cal_bullet.first_flag == 0)
-    {
-        cal_bullet.last_time = DWT_GetTimeline_ms();
-        cal_bullet.last_loader_total_heat_angle = loader->measure.init_total_angle;
-    }
-
-    // 计算实际发弹数以及剩余弹量
-    if ((loader->measure.total_angle - cal_bullet.last_loader_total_angle) >= ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER)
-    {
-        cal_bullet.last_loader_total_angle = loader->measure.total_angle;
-    }
-
-    // 以10Hz每秒减少、增加热量
-    if (DWT_GetTimeline_ms() - cal_bullet.last_time >= 100)
-    {
-        cal_bullet.last_time = DWT_GetTimeline_ms();
-    }
-    */
 }
-
+/***************************************** MoveShoot ********************************************/
 /**
  * @brief 整个发射机构状态设置
  */
@@ -241,9 +229,6 @@ static void ShootLoaderSet()
     }
 }
 
-
-/*
-
 /**
  * @brief   摩擦轮状态设置及射速设定
  */
@@ -261,24 +246,32 @@ static void ShootSpeedSet()
     }
 }
 
+/**************************************    SendData    *************************************/
 static void SendShootData()
 {
     shoot_feedback_data.speed=loader->measure.speed_aps;
 }
 
+/************************************************************************************************
+***************************************        TASK        **************************************
+*************************************************************************************************/
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
+/**********************************     GetRecvData     ***********************************/
     // 从cmd获取控制数据
     SubGetMessage(shoot_sub, &shoot_cmd_recv);
+/**********************************     ControlShoot     ***********************************/
     //电机是否上电
     ShootStateSet();
     //发射模式设定
     ShootLoaderSet();
     //射速设定
     ShootSpeedSet();
+/**********************************     CalculateHeat     ***********************************/
     //计算热量并进行枪管切换
     CalHeat();
+/**********************************        SendData        ***********************************/
     //给发布中心电机实际情况，从而调节拨盘电机的模式
     SendShootData();
     // 反馈数据,用于卡弹反馈
