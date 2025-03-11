@@ -147,13 +147,11 @@ static void DecodeDJIMotor(CANInstance *_instance)
     else if (measure->ecd - measure->last_ecd < -4096)
         measure->total_round++;
     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
-    /*
         if(m2006_init_flag==1 && motor->motor_type == M2006 )
     {
         measure->init_total_angle= motor->measure.total_angle;//记录初始化时电机角度
         m2006_init_flag++;
     }
-    */
 }
 
 static void DJIMotorLostCallback(void *motor_ptr)

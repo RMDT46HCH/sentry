@@ -231,6 +231,7 @@ static void BasicFunctionSet()
     shoot_cmd_send.shoot_mode = SHOOT_ON;
     shoot_cmd_send.friction_mode = FRICTION_ON;
     shoot_cmd_send.shoot_rate=8;
+    shoot_cmd_send.dead_time = 600;
 }
 
 /********************************RemoteControl****************************/
@@ -280,7 +281,7 @@ static void ShootRC()
         {
             //连射
             shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
-            ShootCheck();
+            //ShootCheck();
         }
     }
     else if (rc_data->rc.dial<-200)

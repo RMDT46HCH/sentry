@@ -10,6 +10,8 @@
 /************************************* ShootUsed *************************************/
 static DJIMotorInstance *friction_l, *friction_r, *loader; // 拨盘电机
 static ServoInstance *change;
+static float hibernate_time,dead_time,loader_set_angle = 0;
+
 /************************************** CommUsed **************************************/
 static Publisher_t *shoot_pub;
 static Shoot_Ctrl_Cmd_s shoot_cmd_recv; // 来自cmd的发射控制信息
@@ -215,13 +217,14 @@ static void ShootLoaderSet()
     // 连发模式,对速度闭环,射频后续修改为可变,目前固定为1Hz
     case LOAD_BURSTFIRE:
         DJIMotorOuterLoop(loader, SPEED_LOOP);
-        DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 4);
+        DJIMotorSetRef(loader, 26000);
         // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度
         break;
     // 拨盘反转,对速度闭环
     case LOAD_REVERSE:
-        DJIMotorOuterLoop(loader, SPEED_LOOP);
-        DJIMotorSetRef(loader, -4000);
+            DJIMotorOuterLoop(loader, SPEED_LOOP);                                              // 切换到角度环
+            DJIMotorSetRef(loader, -4000);
+
         break;
     default:
         while (1)
@@ -258,6 +261,8 @@ static void SendShootData()
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
+    // if (hibernate_time + dead_time > DWT_GetTimeline_ms())
+    // return;
 /**********************************     GetRecvData     ***********************************/
     // 从cmd获取控制数据
     SubGetMessage(shoot_sub, &shoot_cmd_recv);
