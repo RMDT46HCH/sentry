@@ -127,6 +127,8 @@ typedef struct
     uint8_t shoot_flag;
     uint8_t cmd_error_flag;
     uint8_t fire_flag;
+    uint8_t flag;
+    uint16_t scan_round;
 }DataLebel_t;
 /* ----------------用于计算热量用到的的结构体---------------- */
 

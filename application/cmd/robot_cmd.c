@@ -49,9 +49,12 @@ static DataLebel_t DataLebel;
 static  BuzzzerInstance *aim_success_buzzer;
 static float cnt1;
 static float yaw_init;
-static float used_yaw,patrol_angle;
+static float used_yaw,patrol_angle,gimbal_yaw_init,scan_yaw;
 int32_t init_total_round,Round_Patrol_init_totol_round,round_patrol_total_round;
-uint8_t yaw_init_flag=0,round_flag;
+static int direction = 1; 
+static int direction1 = 1; // 1 for increasing, -1 for decreasing
+
+uint8_t yaw_init_flag=0,round_flag,yaw_init_flag1;
 
 /********************************************************************************************
 ***************************************      Init     ***************************************
@@ -172,11 +175,6 @@ static void ShootCheck()
  */
 static void VisionJudge()
 {
-    cnt1=sin(DWT_GetTimeline_s());
-    if(cnt1>0.1&&cnt1<1&&DataLebel.cmd_error_flag==0)
-    {
-        gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
-    }
     if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
     {
         DataLebel.vision_flag=1;
@@ -187,34 +185,34 @@ static void VisionJudge()
         {
             aim_success_buzzer->loudness=0.5*(1/abs(minipc_recv_data->Vision.yaw));
         }
-
         if(abs(minipc_recv_data->Vision.pitch)<4&&abs(minipc_recv_data->Vision.yaw)<4)
         {
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
         }
-        else
-        {
-            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
-        }
 
-        if(minipc_recv_data->Vision.deep-gimbal_cmd_send.last_deep==0&&cnt1<-0.2)
-        {
-            DataLebel.cmd_error_flag=1;
-            DataLebel.fire_flag=0;
-            DataLebel.vision_flag=0;
-            gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
-            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
-        }
     }
-    
+
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
         DataLebel.fire_flag=0;
-        DataLebel.vision_flag=0;
-        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
+        DataLebel.flag=1; 
+        if(yaw_init_flag1==0)
+        {
+            gimbal_yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
+            scan_yaw=gimbal_yaw_init;
+            yaw_init_flag1=1;
+        }
+        if(DataLebel.scan_round >12)
+        {
+            DataLebel.vision_flag=0;
+            DataLebel.flag=0; 
+            DataLebel.scan_round=0;
+            yaw_init_flag1=0;
+            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+        }
     }
 }
 
@@ -310,7 +308,6 @@ static void MidRoundPatrol()
 {
 
         used_yaw=patrol_angle-yaw_init+round_patrol_total_round*360;
-        static int direction = 1; // 1 for increasing, -1 for decreasing
 
         patrol_angle += 0.15f * direction;
 
@@ -337,6 +334,26 @@ static void RoundPatrol()
     round_patrol_total_round=gimbal_fetch_data.total_round-Round_Patrol_init_totol_round;
     gimbal_cmd_send.yaw+=0.15;
 }
+
+static void TemporaryPatrol()
+{
+    scan_yaw +=0.2*direction1;
+
+    if(scan_yaw > gimbal_yaw_init+15)
+    {
+        scan_yaw =  gimbal_yaw_init+15;
+        DataLebel.scan_round++;
+        direction1 = -1; // 改变方向
+    }
+    else if(scan_yaw <- 15.0f+gimbal_yaw_init)
+    {
+        scan_yaw=-15+gimbal_yaw_init;
+        DataLebel.scan_round++;
+        direction1 = 1; // 改变方向
+    }
+    gimbal_cmd_send.yaw=scan_yaw;
+}
+
 /**
  * @brief 云台自动控制，视觉发的yaw时距离敌人装甲板中心的偏差值
  *
@@ -349,11 +366,11 @@ static void GimbalAC()
     {
         DataLebel.t_pitch = (float32_t)DWT_GetTimeline_s();
         //上方不扫，减少扫描范围
-        gimbal_cmd_send.pitch =20*abs(sin(2.0*DataLebel.t_pitch));
+        gimbal_cmd_send.pitch =20*abs(sin(3.0*DataLebel.t_pitch));
 
         if (switch_is_mid(rc_data[TEMP].rc.switch_left))
         {
-             RoundPatrol();
+            RoundPatrol();
         }
         else
         {
@@ -363,6 +380,12 @@ static void GimbalAC()
 
     else
     {
+        if(DataLebel.flag==1)
+        {
+            TemporaryPatrol();
+        }
+        else if(DataLebel.flag==0)
+        {
             if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
             gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
             else
@@ -370,6 +393,8 @@ static void GimbalAC()
                 gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
             }
             gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+        }
+
     }
 }
 
@@ -430,17 +455,6 @@ static void ControlDataDeal()
     if (switch_is_mid(rc_data[TEMP].rc.switch_right)) 
     {
         BasicFunctionSet();
-        if(DataLebel.vision_flag==1)
-        {
-            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
-            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
-            else
-            {
-                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
-            }
-            gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
-        }
-        else
         GimbalRC();
         ChassisRC();
         ShootRC();
