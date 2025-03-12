@@ -34,21 +34,18 @@ typedef enum
 
 typedef struct
 {
+	uint8_t header;  // 帧头，固定为0x5A
 	struct
     {
-		uint8_t header;  // 帧头，固定为0x5A
 		float32_t yaw;       // 需要云台转动的相对 yaw 角
 		float32_t pitch;     // 需要云台转动的相对 pitch 角
 		float32_t deep;     // 物体距离
-		uint16_t checksum; // 校验和
 	}Vision;
 	struct
 	{
-		uint8_t header;  // 帧头，固定为0x5A
 		float32_t vx;       // 
 		float32_t vy;     // 
 		float32_t wz;      // 
-		uint16_t checksum; // 校验和
 	}Nav;
 } __attribute__((packed)) Minipc_Recv_s;
 
@@ -69,18 +66,13 @@ typedef enum
 
 typedef struct
 {
+	uint8_t header;  // 帧头，固定为0x5A
 	struct
 	{
-		uint8_t header;  // 帧头，固定为0x5A
 		uint8_t detect_color;
-		float32_t roll;
-		float32_t pitch;
-		float32_t yaw;
-		uint16_t checksum; // 校验和
 	}Vision;
 	struct
 	{
-		uint8_t header;  
 		float32_t vx;
 		float32_t vy;
 		float32_t yaw;
@@ -119,22 +111,6 @@ Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle);
  */
 void SendMinipcData();
 
-/**
- * @brief 设置视觉发送标志位
- *
- * @param enemy_color
- * @param work_mode
- * @param bullet_speed
- */
-void VisionSetFlag();
-
-/**
- * @brief 设置发送数据的姿态部分
- *
- * @param yaw
- * @param pitch
- */
-void VisionSetAltitude(float yaw, float pitch, float roll);
 
 /**
  * @brief 设置巡航的信息
@@ -148,23 +124,9 @@ void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
                     uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
 					);
 
-/*更新发送数据帧，并计算发送数据帧长度*/
-void get_protocol_send_Vision_data(
-                            Minipc_Send_s *tx_data,          // 待发送的float数据
-                            uint8_t *tx_buf,         // 待发送的数据帧
-                            uint16_t *tx_buf_len) ;   // 待发送的数据帧长度
+void get_protocol_send_MiniPC_data(Minipc_Send_s *tx_data,uint8_t *tx_buf,uint16_t *tx_buf_len);  
 
-/*更新发送数据帧，并计算发送数据帧长度*/
-void get_protocol_send_Nav_data(
-                            Minipc_Send_s *tx_data,          // 待发送的float数据
-                            uint8_t *tx_buf,         // 待发送的数据帧
-                            uint16_t *tx_buf_len);    // 待发送的数据帧长度
-
-void get_protocol_info_vision(uint8_t *rx_buf, 
-                           Minipc_Recv_s *recv_data);
-
-void get_protocol_info_nav(uint8_t *rx_buf, 
-                           Minipc_Recv_s *recv_data);
+void get_protocol_info_minipc(uint8_t *rx_buf, Minipc_Recv_s *recv_data);
 
 
 
