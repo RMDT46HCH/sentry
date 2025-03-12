@@ -343,7 +343,6 @@ static void RoundPatrol()
  */
 static void GimbalAC()
 {
-    VisionJudge();
     GetGimbalInitImu();
     //没发信息时巡逻
     if(DataLebel.vision_flag==0)
@@ -431,6 +430,17 @@ static void ControlDataDeal()
     if (switch_is_mid(rc_data[TEMP].rc.switch_right)) 
     {
         BasicFunctionSet();
+        if(DataLebel.vision_flag==1)
+        {
+            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
+            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
+            else
+            {
+                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
+            }
+            gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+        }
+        else
         GimbalRC();
         ChassisRC();
         ShootRC();
