@@ -47,14 +47,11 @@ static Shoot_Upload_Data_s shoot_fetch_data;    // 从发射获取的反馈信�
 /****************************************  Other  ****************************************/
 static DataLebel_t DataLebel;
 static  BuzzzerInstance *aim_success_buzzer;
-static float cnt1;
-static float yaw_init;
-static float used_yaw,patrol_angle,gimbal_yaw_init,scan_yaw;
-int32_t init_total_round,Round_Patrol_init_totol_round,round_patrol_total_round;
-static int direction = 1; 
-static int direction1 = 1; // 1 for increasing, -1 for decreasing
+static  cal_round_patrol_t round_patrol;
+static cal_mid_round_patrol_t mid_round_patrol;
+static cal_temporary_round_patrol_t tem_round_patrol;
 
-uint8_t yaw_init_flag=0,round_flag,yaw_init_flag1;
+
 
 /********************************************************************************************
 ***************************************      Init     ***************************************
@@ -199,18 +196,18 @@ static void VisionJudge()
     {
         DataLebel.fire_flag=0;
         DataLebel.flag=1; 
-        if(yaw_init_flag1==0)
+        if(tem_round_patrol.yaw_init_flag==0)
         {
-            gimbal_yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
-            scan_yaw=gimbal_yaw_init;
-            yaw_init_flag1=1;
+            tem_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
+            tem_round_patrol.yaw=tem_round_patrol.yaw_init;
+            tem_round_patrol.yaw_init_flag=1;
         }
-        if(DataLebel.scan_round >12)
+        if(tem_round_patrol.num >12)
         {
             DataLebel.vision_flag=0;
             DataLebel.flag=0; 
-            DataLebel.scan_round=0;
-            yaw_init_flag1=0;
+            tem_round_patrol.num=0;
+            tem_round_patrol.yaw_init_flag=0;
             AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
@@ -296,63 +293,74 @@ static void ShootRC()
 
 static void GetGimbalInitImu()
 {
-    if(yaw_init_flag==0)
+    if(mid_round_patrol.yaw_init_flag==0)
     {
-        yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
-        patrol_angle = yaw_init;
-        init_total_round=gimbal_fetch_data.total_round;
-        yaw_init_flag=1;
+        mid_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
+        mid_round_patrol.yaw = mid_round_patrol.yaw_init;
+        mid_round_patrol.yaw_init_flag=1;
     }
 }
 static void MidRoundPatrol()
 {
+        mid_round_patrol.yaw_total_angle=mid_round_patrol.yaw-mid_round_patrol.yaw_init+round_patrol.total_round*360;
+        mid_round_patrol.yaw += 0.15f * mid_round_patrol.direction;
 
-        used_yaw=patrol_angle-yaw_init+round_patrol_total_round*360;
-
-        patrol_angle += 0.15f * direction;
-
-        if(used_yaw > 70.0f+round_patrol_total_round*360)
+        if(mid_round_patrol.yaw_total_angle > 70.0f+round_patrol.total_round*360)
         {
-            used_yaw =  70.0f+round_patrol_total_round*360;
-            direction = -1; // 改变方向
+            mid_round_patrol.yaw_total_angle =  70.0f+round_patrol.total_round*360;
+            mid_round_patrol.direction = -1; // 改变方向
         }
-        else if(used_yaw <- 70.0f+round_patrol_total_round*360)
+        else if(mid_round_patrol.yaw_total_angle <- 70.0f+round_patrol.total_round*360)
         {
-            used_yaw=-70+round_patrol_total_round*360;
-            direction = 1; // 改变方向
+            mid_round_patrol.yaw_total_angle=-70+round_patrol.total_round*360;
+            mid_round_patrol.direction = 1; // 改变方向
         }
-        gimbal_cmd_send.yaw = used_yaw;
+        gimbal_cmd_send.yaw = mid_round_patrol.yaw_total_angle;
 }
 
 static void RoundPatrol()
 {
-    if(round_flag==0)
+    if(round_patrol.flag==0)
     {
-        Round_Patrol_init_totol_round=gimbal_fetch_data.total_round;
-        round_flag=1;
+        round_patrol.init_totol_round=gimbal_fetch_data.total_round;
+        round_patrol.flag=1;
     }
-    round_patrol_total_round=gimbal_fetch_data.total_round-Round_Patrol_init_totol_round;
+    round_patrol.total_round=gimbal_fetch_data.total_round-round_patrol.init_totol_round;
     gimbal_cmd_send.yaw+=0.15;
 }
 
 static void TemporaryPatrol()
 {
-    scan_yaw +=0.2*direction1;
+    tem_round_patrol.yaw +=0.2*tem_round_patrol.direction;
 
-    if(scan_yaw > gimbal_yaw_init+15)
+    if(tem_round_patrol.yaw > tem_round_patrol.yaw_init+15)
     {
-        scan_yaw =  gimbal_yaw_init+15;
-        DataLebel.scan_round++;
-        direction1 = -1; // 改变方向
+        tem_round_patrol.yaw =  tem_round_patrol.yaw_init+15;
+        tem_round_patrol.num++;
+        tem_round_patrol.direction = -1; // 改变方向
     }
-    else if(scan_yaw <- 15.0f+gimbal_yaw_init)
+    else if(tem_round_patrol.yaw <- 15.0f+tem_round_patrol.yaw_init)
     {
-        scan_yaw=-15+gimbal_yaw_init;
-        DataLebel.scan_round++;
-        direction1 = 1; // 改变方向
+        tem_round_patrol.yaw=-15+tem_round_patrol.yaw_init;
+        tem_round_patrol.num++;
+        tem_round_patrol.direction = 1; // 改变方向
     }
-    gimbal_cmd_send.yaw=scan_yaw;
+    gimbal_cmd_send.yaw=tem_round_patrol.yaw;
 }
+
+static void FoundEnermy()
+{
+    if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
+    {
+        gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
+    }
+    else
+    {
+        gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
+    }
+    gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+}
+
 
 /**
  * @brief 云台自动控制，视觉发的yaw时距离敌人装甲板中心的偏差值
@@ -386,13 +394,7 @@ static void GimbalAC()
         }
         else if(DataLebel.flag==0)
         {
-            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
-            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
-            else
-            {
-                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
-            }
-            gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+            FoundEnermy();
         }
 
     }

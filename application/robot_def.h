@@ -111,11 +111,6 @@ typedef enum
 }
 nav_mode_e;
 
-// 功率限制（哨兵的是100w，感觉可以不用）
-typedef struct
-{ // 功率控制
-    float chassis_power_mx;
-} Chassis_Power_Data_s;
 /* ----------------用于记录时间或标志位的结构体---------------- */
 typedef struct
 {
@@ -128,7 +123,6 @@ typedef struct
     uint8_t cmd_error_flag;
     uint8_t fire_flag;
     uint8_t flag;
-    uint16_t scan_round;
 }DataLebel_t;
 /* ----------------用于计算热量用到的的结构体---------------- */
 
@@ -139,6 +133,42 @@ typedef struct
     uint8_t shoot_l;
     uint8_t shoot_r;
 }cal_bullet_t;
+
+/* ----------------用于计算巡航云台的的结构体---------------- */
+
+typedef struct
+{
+    uint8_t yaw_init_flag;
+    float yaw_init;
+    float yaw_total_angle;
+    float yaw;
+
+    int direction; 
+}cal_mid_round_patrol_t;
+
+typedef struct
+{
+    int32_t init_totol_round;
+    int32_t total_round;
+    uint8_t flag;
+
+
+    float yaw_init;
+    int midround_direction; 
+}cal_round_patrol_t;
+
+typedef struct
+{
+    uint8_t yaw_init_flag;
+    uint16_t num;
+
+    float yaw_init;
+    float yaw;
+    int32_t round_patrol_total_round;
+    int direction; // 1 for increasing, -1 for decreasing
+}cal_temporary_round_patrol_t;
+
+
 /* ----------------CMD应用发布的控制数据,应当由gimbal/chassis/shoot订阅---------------- */
 /**
  * @brief 对于双板情况,遥控器和pc在云台,裁判系统在底盘
