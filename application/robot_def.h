@@ -142,7 +142,6 @@ typedef struct
     float yaw_init;
     float yaw_total_angle;
     float yaw;
-
     int direction; 
 }cal_mid_round_patrol_t;
 
@@ -151,8 +150,6 @@ typedef struct
     int32_t init_totol_round;
     int32_t total_round;
     uint8_t flag;
-
-
     float yaw_init;
     int midround_direction; 
 }cal_round_patrol_t;
