@@ -138,7 +138,7 @@ typedef struct
 
 typedef struct
 {
-    uint8_t yaw_init_flag;
+    uint8_t flag;
     float yaw_init;
     float yaw_total_angle;
     float yaw;
@@ -151,17 +151,14 @@ typedef struct
     int32_t total_round;
     uint8_t flag;
     float yaw_init;
-    int midround_direction; 
 }cal_round_patrol_t;
 
 typedef struct
 {
-    uint8_t yaw_init_flag;
+    uint8_t flag;
     uint16_t num;
-
     float yaw_init;
     float yaw;
-    int32_t round_patrol_total_round;
     int direction; // 1 for increasing, -1 for decreasing
 }cal_temporary_round_patrol_t;
 

@@ -92,6 +92,8 @@ void RobotCMDInit()
     shoot_fetch_data.over_heat_flag=0;
     //让云台水平
     gimbal_cmd_send.pitch = 0;
+    mid_round_patrol.direction=1;
+    tem_round_patrol.direction=1;
     //将标志位全都置0
     memset(&DataLebel,0,sizeof(DataLebel));
 }
@@ -196,18 +198,18 @@ static void VisionJudge()
     {
         DataLebel.fire_flag=0;
         DataLebel.flag=1; 
-        if(tem_round_patrol.yaw_init_flag==0)
+        if(tem_round_patrol.flag==0)
         {
             tem_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
             tem_round_patrol.yaw=tem_round_patrol.yaw_init;
-            tem_round_patrol.yaw_init_flag=1;
+            tem_round_patrol.flag=1;
         }
         if(tem_round_patrol.num >12)
         {
             DataLebel.vision_flag=0;
             DataLebel.flag=0; 
             tem_round_patrol.num=0;
-            tem_round_patrol.yaw_init_flag=0;
+            tem_round_patrol.flag=0;
             AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
@@ -293,11 +295,11 @@ static void ShootRC()
 
 static void GetGimbalInitImu()
 {
-    if(mid_round_patrol.yaw_init_flag==0)
+    if(mid_round_patrol.flag==0)
     {
         mid_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
         mid_round_patrol.yaw = mid_round_patrol.yaw_init;
-        mid_round_patrol.yaw_init_flag=1;
+        mid_round_patrol.flag=1;
     }
 }
 static void MidRoundPatrol()
