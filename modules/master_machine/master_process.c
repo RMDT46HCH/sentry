@@ -13,7 +13,7 @@ static DaemonInstance *minipc_daemon_instance;
 void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
 					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
-                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
+                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress,uint8_t detect_color
 					)
 {
     minipc_send_data.header=0x4A;
@@ -34,6 +34,7 @@ void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
     minipc_send_data.Nav.occupation =occupation;
     minipc_send_data.Nav.game_progress=game_progress;
     minipc_send_data.Nav.tail1=0x2B;
+    minipc_send_data.Vision.detect_color=detect_color;
 }
 static USARTInstance *minipc_usart_instance;
 

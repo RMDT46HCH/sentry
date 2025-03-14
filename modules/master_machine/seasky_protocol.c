@@ -103,7 +103,8 @@ void get_protocol_info_minipc(uint8_t *rx_buf, Minipc_Recv_s *recv_data)
         memcpy(&recv_data->Nav.wz, &rx_buf[9], sizeof(float));
         memcpy(&recv_data->Vision.yaw,&rx_buf[13],sizeof(float));
         memcpy(&recv_data->Vision.pitch,&rx_buf[17],sizeof(float));
-        memcpy(&recv_data->Vision.deep,&rx_buf[21],sizeof(float));        
+        memcpy(&recv_data->Vision.deep,&rx_buf[21],sizeof(float));
+        memcpy(&recv_data->Nav.patrol_mode,&rx_buf[25],sizeof(uint8_t));        
         }
     }
 }

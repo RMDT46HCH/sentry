@@ -140,6 +140,9 @@ static void ChassisRotateSet()
         case CHASSIS_ROTATE: // 变速小陀螺
             chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*4.75;
         break;
+        case CHASSIS_NAV:
+        chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*4.75*chassis_cmd_recv.w/100;
+        break;
 
         default:
         break;

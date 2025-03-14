@@ -177,27 +177,28 @@ static void VisionJudge()
     if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
     {
         DataLebel.vision_flag=1;
-        //检测到装甲板，开启蜂鸣器
-        AlarmSetStatus(aim_success_buzzer, ALARM_ON);
-        //与装甲板中心的距离越近，蜂鸣器越响
-        if(abs(minipc_recv_data->Vision.yaw)>1&&aim_success_buzzer->loudness<0.5)
-        {
-            aim_success_buzzer->loudness=0.5*(1/abs(minipc_recv_data->Vision.yaw));
-        }
         if(abs(minipc_recv_data->Vision.pitch)<4&&abs(minipc_recv_data->Vision.yaw)<4)
         {
+            AlarmSetStatus(aim_success_buzzer, ALARM_ON);
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
+            DataLebel.flag=1;
         }
-
+        else
+        {
+            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
+        }
     }
-
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
+        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         DataLebel.fire_flag=0;
-        DataLebel.flag=1; 
+        if(DataLebel.flag==1)
+        {
+            DataLebel.flag=2; 
+        }
         if(tem_round_patrol.flag==0)
         {
             tem_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
@@ -210,7 +211,6 @@ static void VisionJudge()
             DataLebel.flag=0; 
             tem_round_patrol.num=0;
             tem_round_patrol.flag=0;
-            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
 }
@@ -253,11 +253,11 @@ static void ChassisRC()
 
     if (switch_is_down(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
     }
     else if (switch_is_mid(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_left))
     {
@@ -324,10 +324,10 @@ static void RoundPatrol()
 {
     if(round_patrol.flag==0)
     {
-        round_patrol.init_totol_round=gimbal_fetch_data.total_round;
+        round_patrol.init_totol_round=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle/360;
         round_patrol.flag=1;
     }
-    round_patrol.total_round=gimbal_fetch_data.total_round-round_patrol.init_totol_round;
+    round_patrol.total_round=(gimbal_fetch_data.gimbal_imu_data.YawTotalAngle/360)-round_patrol.init_totol_round;
     gimbal_cmd_send.yaw+=0.15;
 }
 
@@ -378,7 +378,7 @@ static void GimbalAC()
         //上方不扫，减少扫描范围
         gimbal_cmd_send.pitch =20*abs(sin(3.0*DataLebel.t_pitch));
 
-        if (switch_is_mid(rc_data[TEMP].rc.switch_left))
+        if (switch_is_down(rc_data[TEMP].rc.switch_left))
         {
             RoundPatrol();
         }
@@ -390,11 +390,11 @@ static void GimbalAC()
 
     else
     {
-        if(DataLebel.flag==1)
+        if(DataLebel.flag==2)
         {
             TemporaryPatrol();
         }
-        else if(DataLebel.flag==0)
+        else
         {
             FoundEnermy();
         }
@@ -410,7 +410,8 @@ static void ChassisAC()
 {
     chassis_cmd_send.vx=minipc_recv_data->Nav.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
     chassis_cmd_send.vy=minipc_recv_data->Nav.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
-    chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+    chassis_cmd_send.w=minipc_recv_data->Nav.wz;
+    chassis_cmd_send.chassis_mode=CHASSIS_NAV;
 }
 
 static void ShootAC()
@@ -424,7 +425,7 @@ static void ShootAC()
         else
         {
             shoot_cmd_send.load_mode=LOAD_STOP;
-            ShootCheck();
+            //ShootCheck();
         }
     }
     else
@@ -459,7 +460,11 @@ static void ControlDataDeal()
     if (switch_is_mid(rc_data[TEMP].rc.switch_right)) 
     {
         BasicFunctionSet();
-        GimbalRC();
+        GimbalAC();
+        // if(DataLebel.vision_flag==1)
+        // FoundEnermy();   
+        // else
+        // GimbalRC();
         ChassisRC();
         ShootRC();
     }
@@ -487,10 +492,7 @@ static void SendJudgeShootData()
     shoot_cmd_send.right_bullet_heat=chassis_fetch_data.right_bullet_heat;
 }
 
-static void JudgeEnemy()
-{
-    minipc_send_data.Vision.detect_color=chassis_fetch_data.enemy_color;
-}
+
 
 
 /*********************************************************************************************
@@ -511,12 +513,11 @@ void RobotCMDTask()
     ControlDataDeal();
 /**************************************    SendData    **************************************/
     // 设置视觉需要用到的数据
-    JudgeEnemy();
     // 设置巡航需要用到的数据       
     NavSetMessage(chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,gimbal_fetch_data.gimbal_imu_data.Yaw,chassis_fetch_data.Occupation
                     ,chassis_fetch_data.remain_HP,chassis_fetch_data.self_infantry_HP,chassis_fetch_data.self_hero_HP
                     ,chassis_fetch_data.enemy_color,chassis_fetch_data.enemy_infantry_HP,chassis_fetch_data.enemy_hero_HP
-                    ,chassis_fetch_data.remain_time,shoot_cmd_send.bullet_num,chassis_fetch_data.game_progress
+                    ,chassis_fetch_data.remain_time,shoot_cmd_send.bullet_num,chassis_fetch_data.game_progress,chassis_fetch_data.enemy_color
                     );
 
     //发送给小电脑数据

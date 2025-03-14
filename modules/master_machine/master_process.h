@@ -4,7 +4,7 @@
 #include "bsp_usart.h"
 #include "seasky_protocol.h"
 #include "arm_math.h"
-#define MINIPC_RECV_SIZE 18u // 当前为固定值,36字节
+#define MINIPC_RECV_SIZE 36u // 当前为固定值,36字节
 #define MINIPC_SEND_SIZE 36u
 
 #pragma pack(1)
@@ -46,6 +46,7 @@ typedef struct
 		float32_t vx;       // 
 		float32_t vy;     // 
 		float32_t wz;      // 
+		uint8_t patrol_mode;
 	}Nav;
 } __attribute__((packed)) Minipc_Recv_s;
 
@@ -121,7 +122,7 @@ void SendMinipcData();
 void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
 					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
-                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
+                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress,uint8_t detect_color
 					);
 
 void get_protocol_send_MiniPC_data(Minipc_Send_s *tx_data,uint8_t *tx_buf,uint16_t *tx_buf_len);  

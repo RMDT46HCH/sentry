@@ -25,7 +25,7 @@
 #define YAW_ECD_GREATER_THAN_4096 1 // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
 #define PITCH_HORIZON_ECD 1340.0f      // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
 #define PITCH_MAX_ANGLE  20          // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
-#define PITCH_MIN_ANGLE -10           // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MIN_ANGLE 0           // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
 // 发射参数
 #define ONE_BULLET_DELTA_ANGLE 30    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
 #define REDUCTION_RATIO_LOADER 36.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
@@ -72,6 +72,7 @@ typedef enum
 {
     CHASSIS_ZERO_FORCE = 0,    // 电流零输入
     CHASSIS_ROTATE,            // 小陀螺模式
+    CHASSIS_NAV,
     CHASSIS_NO_FOLLOW,         // 不跟随，允许全向平移
     CHASSIS_FOLLOW_GIMBAL_YAW, // 跟随模式
 } chassis_mode_e;
@@ -175,6 +176,7 @@ typedef struct
     float vx;           // 前进方向速度
     float vy;           // 横移方向速度
     float wz;           // 旋转速度
+    float w;
     float offset_angle; // 底盘和归中位置的夹角
     chassis_mode_e chassis_mode;    
     // UI部分
@@ -229,7 +231,7 @@ typedef struct
     uint16_t enemy_infantry_HP;
     uint16_t remain_time;
      //发给视觉的数据
-    Enemy_Color_e enemy_color;   // 0 for blue, 1 for red
+    uint8_t enemy_color;
     //发给云台的数据
     uint8_t rest_heat;           // 剩余枪口热量
     uint16_t bullet_num;
