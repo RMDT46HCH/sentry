@@ -278,9 +278,12 @@ LDSCRIPT = STM32F407IGHx_FLASH.ld
 
 # libraries
 LIBS = -lc -lm -lnosys  \
--l:libCMSISDSP.a
+-l:libCMSISDSP.a \
+-l:libarm_cortexM4lf_math.a
+
 LIBDIR =  \
 -LMiddlewares/ST/ARM/DSP/Lib
+
 LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections -flto -Wl,--print-memory-usage
 
 # default action: build all

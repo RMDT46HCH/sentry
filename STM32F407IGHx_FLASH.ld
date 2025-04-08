@@ -123,6 +123,7 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
   } >FLASH
+  
   .fini_array :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);

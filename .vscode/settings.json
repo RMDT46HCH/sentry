@@ -42,9 +42,10 @@
         "cmath": "c",
         "distance_measurement.h": "c",
         "bsp_iic.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "bmi088.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
-    "cortex-debug.armToolchainPath": "C:\\USERS\\ADMINISTRATOR\\GCC-ARM-NONE-EABI-10.3-2021.10-WIN32\\ARM-GNU-TOOLCHIAN\\BIN",
-    "cortex-debug.openocdPath": "C:\\USERS\\ADMINISTRATOR\\OPENOCD\\BIN\\OPENOCD.EXE"
+    "cortex-debug.armToolchainPath": "C:\\Users\\Administrator\\gcc-arm-none-eabi-10.3-2021.10-win32\\Arm-GNU-Toolchian\\bin",
+    "cortex-debug.openocdPath": "C:\\Users\\Administrator\\OpenOCD\\bin\\openocd.EXE"
 }

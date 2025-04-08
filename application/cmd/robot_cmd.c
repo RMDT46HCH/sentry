@@ -432,16 +432,13 @@ static void ControlDataDeal()
         BasicFunctionSet();
         if(DataLebel.vision_flag==1)
         {
-            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
             gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
-            else
-            {
-                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
-            }
             gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
         }
         else
-        GimbalRC();
+        {
+            GimbalRC();
+        }
         ChassisRC();
         ShootRC();
     }
