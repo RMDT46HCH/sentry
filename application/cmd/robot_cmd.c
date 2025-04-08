@@ -174,7 +174,7 @@ static void ShootCheck()
  */
 static void VisionJudge()
 {
-    if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
+    if(minipc_recv_data->Vision.deep!=0)//代表收到信息
     {
         DataLebel.vision_flag=1;
         if(abs(minipc_recv_data->Vision.pitch)<4&&abs(minipc_recv_data->Vision.yaw)<4)
@@ -447,7 +447,6 @@ static void AnythingStop()
     shoot_cmd_send.friction_mode = FRICTION_OFF;
     shoot_cmd_send.load_mode = LOAD_STOP;
     AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
-    DataLebel.cmd_error_flag=0;
 }
 
 /**************************************  SetMode   **************************************/

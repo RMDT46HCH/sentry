@@ -109,8 +109,7 @@ typedef enum
 {
     ROUND_FIND_ENERMY=0,
     MID_ROUND_FIND_ENERMY,
-}
-nav_mode_e;
+}nav_mode_e;
 
 /* ----------------用于记录时间或标志位的结构体---------------- */
 typedef struct
@@ -121,7 +120,6 @@ typedef struct
     float t_shoot_error;
     uint8_t vision_flag;
     uint8_t shoot_flag;
-    uint8_t cmd_error_flag;
     uint8_t fire_flag;
     uint8_t flag;
 }DataLebel_t;
@@ -179,9 +177,6 @@ typedef struct
     float w;
     float offset_angle; // 底盘和归中位置的夹角
     chassis_mode_e chassis_mode;    
-    // UI部分
-    //  ...
-
 } Chassis_Ctrl_Cmd_s;
 
 // cmd发布的云台控制数据,由gimbal订阅
@@ -192,8 +187,6 @@ typedef struct
     float chassis_rotate_wz;
     gimbal_mode_e gimbal_mode;
     nav_mode_e nav_mode;
-    float last_deep;
-
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅
@@ -230,15 +223,13 @@ typedef struct
     uint16_t enemy_sentry_HP;
     uint16_t enemy_infantry_HP;
     uint16_t remain_time;
-     //发给视觉的数据
-    uint8_t enemy_color;
-    //发给云台的数据
-    uint8_t rest_heat;           // 剩余枪口热量
-    uint16_t bullet_num;
-    uint8_t cmd_error_flag;
     uint8_t Occupation;
     uint8_t game_progress;
-
+     //发给视觉的数据
+    uint8_t enemy_color;
+    //发给发射机构的数据
+    uint8_t rest_heat;           // 剩余枪口热量
+    uint16_t bullet_num;
     uint16_t left_bullet_heat;
     uint16_t right_bullet_heat;
     uint16_t bullet_speed;
@@ -250,7 +241,6 @@ typedef struct
     //发给视觉的数据
     attitude_t gimbal_imu_data;
     uint16_t   yaw_motor_single_round_angle;
-    uint8_t cmd_error_flag;
     int32_t total_round; // 总圈数,注意方向
 } Gimbal_Upload_Data_s;
 
@@ -258,7 +248,6 @@ typedef struct
 {
     uint8_t over_heat_flag;
     uint8_t loader_error_flag;
-    uint8_t cmd_error_flag;
     float speed;
 } Shoot_Upload_Data_s;
 
