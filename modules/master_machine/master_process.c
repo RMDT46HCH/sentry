@@ -7,24 +7,16 @@ static Minipc_Recv_s minipc_recv_data;
 static Minipc_Send_s minipc_send_data;
 static DaemonInstance *minipc_daemon_instance;
 
-void VisionSetFlag()
-{
-    minipc_send_data.Vision.detect_color=0;
-}
 
-void VisionSetAltitude(float yaw, float pitch, float roll)
-{
-    minipc_send_data.Vision.yaw = yaw;
-    minipc_send_data.Vision.pitch = pitch;
-    minipc_send_data.Vision.roll = roll;
-}
+
+
 void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
 					uint16_t self_sentry_HP,uint16_t self_infantry_HP,uint16_t self_hero_HP,
 					uint16_t enermy_sentry_HP,uint16_t enermy_infantry_HP,uint16_t enermy_hero_HP,
-                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress
+                    uint16_t remain_time,uint16_t remain_bullet,uint8_t game_progress,uint8_t detect_color
 					)
 {
-    minipc_send_data.Nav.header=0x4A;
+    minipc_send_data.header=0x4A;
     minipc_send_data.Nav.vx=vx;
     minipc_send_data.Nav.vy=vy;
     minipc_send_data.Nav.yaw=yaw;
@@ -42,6 +34,7 @@ void NavSetMessage(float vx, float vy, float yaw,uint8_t occupation,
     minipc_send_data.Nav.occupation =occupation;
     minipc_send_data.Nav.game_progress=game_progress;
     minipc_send_data.Nav.tail1=0x2B;
+    minipc_send_data.Vision.detect_color=detect_color;
 }
 static USARTInstance *minipc_usart_instance;
 
@@ -73,8 +66,7 @@ static void MiniPCOfflineCallback(void *id)
 static void DecodeMinpc()
 {
     //DaemonReload(minipc_daemon_instance); // 喂狗
-    get_protocol_info_vision(minipc_usart_instance->recv_buff,&minipc_recv_data);
-    get_protocol_info_nav(minipc_usart_instance->recv_buff, &minipc_recv_data);
+    get_protocol_info_minipc(minipc_usart_instance->recv_buff,&minipc_recv_data);
 }
 
 Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle)
@@ -110,8 +102,7 @@ void SendMinipcData()
     static uint8_t send_buff[MINIPC_SEND_SIZE];
     static uint16_t tx_len;
     // 将数据转化为seasky协议的数据包
-    get_protocol_send_Vision_data(&minipc_send_data, send_buff, &tx_len);
-    get_protocol_send_Nav_data(&minipc_send_data, send_buff, &tx_len);
+    get_protocol_send_MiniPC_data(&minipc_send_data, send_buff, &tx_len);
 
     USARTSend(minipc_usart_instance, send_buff, tx_len, USART_TRANSFER_DMA);
 }

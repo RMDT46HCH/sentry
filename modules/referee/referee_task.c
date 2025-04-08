@@ -91,9 +91,6 @@ static void RobotModeTest(Referee_Interactive_info_t *_Interactive_data) // æµ‹è
         _Interactive_data->gimbal_mode = GIMBAL_ZERO_FORCE;
         _Interactive_data->shoot_mode = SHOOT_ON;
         _Interactive_data->friction_mode = FRICTION_ON;
-        _Interactive_data->Chassis_Power_Data.chassis_power_mx += 3.5;
-        if (_Interactive_data->Chassis_Power_Data.chassis_power_mx >= 18)
-            _Interactive_data->Chassis_Power_Data.chassis_power_mx = 0;
         break;
     }
     case 1:

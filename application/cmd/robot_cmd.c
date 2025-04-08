@@ -47,11 +47,11 @@ static Shoot_Upload_Data_s shoot_fetch_data;    // 从发射获取的反馈信�
 /****************************************  Other  ****************************************/
 static DataLebel_t DataLebel;
 static  BuzzzerInstance *aim_success_buzzer;
-static float cnt1;
-static float yaw_init;
-static float used_yaw,patrol_angle;
-int32_t init_total_round,Round_Patrol_init_totol_round,round_patrol_total_round;
-uint8_t yaw_init_flag=0,round_flag;
+static  cal_round_patrol_t round_patrol;
+static cal_mid_round_patrol_t mid_round_patrol;
+static cal_temporary_round_patrol_t tem_round_patrol;
+
+
 
 /********************************************************************************************
 ***************************************      Init     ***************************************
@@ -92,6 +92,8 @@ void RobotCMDInit()
     shoot_fetch_data.over_heat_flag=0;
     //让云台水平
     gimbal_cmd_send.pitch = 0;
+    mid_round_patrol.direction=1;
+    tem_round_patrol.direction=1;
     //将标志位全都置0
     memset(&DataLebel,0,sizeof(DataLebel));
 }
@@ -172,49 +174,44 @@ static void ShootCheck()
  */
 static void VisionJudge()
 {
-    cnt1=sin(DWT_GetTimeline_s());
-    if(cnt1>0.1&&cnt1<1&&DataLebel.cmd_error_flag==0)
-    {
-        gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
-    }
     if(minipc_recv_data->Vision.deep!=0&&DataLebel.cmd_error_flag==0)//代表收到信息
     {
         DataLebel.vision_flag=1;
-        //检测到装甲板，开启蜂鸣器
-        AlarmSetStatus(aim_success_buzzer, ALARM_ON);
-        //与装甲板中心的距离越近，蜂鸣器越响
-        if(abs(minipc_recv_data->Vision.yaw)>1&&aim_success_buzzer->loudness<0.5)
-        {
-            aim_success_buzzer->loudness=0.5*(1/abs(minipc_recv_data->Vision.yaw));
-        }
-
         if(abs(minipc_recv_data->Vision.pitch)<4&&abs(minipc_recv_data->Vision.yaw)<4)
         {
+            AlarmSetStatus(aim_success_buzzer, ALARM_ON);
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
+            DataLebel.flag=1;
         }
         else
         {
             AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
-
-        if(minipc_recv_data->Vision.deep-gimbal_cmd_send.last_deep==0&&cnt1<-0.2)
-        {
-            DataLebel.cmd_error_flag=1;
-            DataLebel.fire_flag=0;
-            DataLebel.vision_flag=0;
-            gimbal_cmd_send.last_deep= minipc_recv_data->Vision.deep;
-            AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
-        }
     }
-    
      //检测不到装甲板，关蜂鸣器，关火
     else if(minipc_recv_data->Vision.deep==0 && DataLebel.vision_flag==1)       
     {
+        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         DataLebel.fire_flag=0;
-        DataLebel.vision_flag=0;
-        AlarmSetStatus(aim_success_buzzer, ALARM_OFF);    
+        if(DataLebel.flag==1)
+        {
+            DataLebel.flag=2; 
+        }
+        if(tem_round_patrol.flag==0)
+        {
+            tem_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle;
+            tem_round_patrol.yaw=tem_round_patrol.yaw_init;
+            tem_round_patrol.flag=1;
+        }
+        if(tem_round_patrol.num >12)
+        {
+            DataLebel.vision_flag=0;
+            DataLebel.flag=0; 
+            tem_round_patrol.num=0;
+            tem_round_patrol.flag=0;
+        }
     }
 }
 
@@ -256,11 +253,11 @@ static void ChassisRC()
 
     if (switch_is_down(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
     }
     else if (switch_is_mid(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_left))
     {
@@ -298,45 +295,75 @@ static void ShootRC()
 
 static void GetGimbalInitImu()
 {
-    if(yaw_init_flag==0)
+    if(mid_round_patrol.flag==0)
     {
-        yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
-        patrol_angle = yaw_init;
-        init_total_round=gimbal_fetch_data.total_round;
-        yaw_init_flag=1;
+        mid_round_patrol.yaw_init=gimbal_fetch_data.gimbal_imu_data.Yaw;
+        mid_round_patrol.yaw = mid_round_patrol.yaw_init;
+        mid_round_patrol.flag=1;
     }
 }
 static void MidRoundPatrol()
 {
+        mid_round_patrol.yaw_total_angle=mid_round_patrol.yaw-mid_round_patrol.yaw_init+round_patrol.total_round*360;
+        mid_round_patrol.yaw += 0.15f * mid_round_patrol.direction;
 
-        used_yaw=patrol_angle-yaw_init+round_patrol_total_round*360;
-        static int direction = 1; // 1 for increasing, -1 for decreasing
-
-        patrol_angle += 0.15f * direction;
-
-        if(used_yaw > 70.0f+round_patrol_total_round*360)
+        if(mid_round_patrol.yaw_total_angle > 70.0f+round_patrol.total_round*360)
         {
-            used_yaw =  70.0f+round_patrol_total_round*360;
-            direction = -1; // 改变方向
+            mid_round_patrol.yaw_total_angle =  70.0f+round_patrol.total_round*360;
+            mid_round_patrol.direction = -1; // 改变方向
         }
-        else if(used_yaw <- 70.0f+round_patrol_total_round*360)
+        else if(mid_round_patrol.yaw_total_angle <- 70.0f+round_patrol.total_round*360)
         {
-            used_yaw=-70+round_patrol_total_round*360;
-            direction = 1; // 改变方向
+            mid_round_patrol.yaw_total_angle=-70+round_patrol.total_round*360;
+            mid_round_patrol.direction = 1; // 改变方向
         }
-        gimbal_cmd_send.yaw = used_yaw;
+        gimbal_cmd_send.yaw = mid_round_patrol.yaw_total_angle;
 }
 
 static void RoundPatrol()
 {
-    if(round_flag==0)
+    if(round_patrol.flag==0)
     {
-        Round_Patrol_init_totol_round=gimbal_fetch_data.total_round;
-        round_flag=1;
+        round_patrol.init_totol_round=gimbal_fetch_data.gimbal_imu_data.YawTotalAngle/360;
+        round_patrol.flag=1;
     }
-    round_patrol_total_round=gimbal_fetch_data.total_round-Round_Patrol_init_totol_round;
+    round_patrol.total_round=(gimbal_fetch_data.gimbal_imu_data.YawTotalAngle/360)-round_patrol.init_totol_round;
     gimbal_cmd_send.yaw+=0.15;
 }
+
+static void TemporaryPatrol()
+{
+    tem_round_patrol.yaw +=0.2*tem_round_patrol.direction;
+
+    if(tem_round_patrol.yaw > tem_round_patrol.yaw_init+15)
+    {
+        tem_round_patrol.yaw =  tem_round_patrol.yaw_init+15;
+        tem_round_patrol.num++;
+        tem_round_patrol.direction = -1; // 改变方向
+    }
+    else if(tem_round_patrol.yaw <- 15.0f+tem_round_patrol.yaw_init)
+    {
+        tem_round_patrol.yaw=-15+tem_round_patrol.yaw_init;
+        tem_round_patrol.num++;
+        tem_round_patrol.direction = 1; // 改变方向
+    }
+    gimbal_cmd_send.yaw=tem_round_patrol.yaw;
+}
+
+static void FoundEnermy()
+{
+    if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
+    {
+        gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
+    }
+    else
+    {
+        gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
+    }
+    gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+}
+
+
 /**
  * @brief 云台自动控制，视觉发的yaw时距离敌人装甲板中心的偏差值
  *
@@ -349,11 +376,11 @@ static void GimbalAC()
     {
         DataLebel.t_pitch = (float32_t)DWT_GetTimeline_s();
         //上方不扫，减少扫描范围
-        gimbal_cmd_send.pitch =20*abs(sin(2.0*DataLebel.t_pitch));
+        gimbal_cmd_send.pitch =20*abs(sin(3.0*DataLebel.t_pitch));
 
-        if (switch_is_mid(rc_data[TEMP].rc.switch_left))
+        if (switch_is_down(rc_data[TEMP].rc.switch_left))
         {
-             RoundPatrol();
+            RoundPatrol();
         }
         else
         {
@@ -363,13 +390,15 @@ static void GimbalAC()
 
     else
     {
-            if(abs(minipc_recv_data->Vision.yaw)>5&&abs(minipc_recv_data->Vision.yaw)<20)
-            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
-            else
-            {
-                gimbal_cmd_send.yaw-=(0.00355f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
-            }
-            gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+        if(DataLebel.flag==2)
+        {
+            TemporaryPatrol();
+        }
+        else
+        {
+            FoundEnermy();
+        }
+
     }
 }
 
@@ -381,7 +410,8 @@ static void ChassisAC()
 {
     chassis_cmd_send.vx=minipc_recv_data->Nav.vx*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
     chassis_cmd_send.vy=minipc_recv_data->Nav.vy*4.0f * REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL*1000;
-    chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
+    chassis_cmd_send.w=minipc_recv_data->Nav.wz;
+    chassis_cmd_send.chassis_mode=CHASSIS_NAV;
 }
 
 static void ShootAC()
@@ -395,7 +425,7 @@ static void ShootAC()
         else
         {
             shoot_cmd_send.load_mode=LOAD_STOP;
-            ShootCheck();
+            //ShootCheck();
         }
     }
     else
@@ -466,10 +496,7 @@ static void SendJudgeShootData()
     shoot_cmd_send.right_bullet_heat=chassis_fetch_data.right_bullet_heat;
 }
 
-static void JudgeEnemy()
-{
-    minipc_send_data.Vision.detect_color=chassis_fetch_data.enemy_color;
-}
+
 
 
 /*********************************************************************************************
@@ -490,12 +517,11 @@ void RobotCMDTask()
     ControlDataDeal();
 /**************************************    SendData    **************************************/
     // 设置视觉需要用到的数据
-    JudgeEnemy();
     // 设置巡航需要用到的数据       
     NavSetMessage(chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,gimbal_fetch_data.gimbal_imu_data.Yaw,chassis_fetch_data.Occupation
                     ,chassis_fetch_data.remain_HP,chassis_fetch_data.self_infantry_HP,chassis_fetch_data.self_hero_HP
                     ,chassis_fetch_data.enemy_color,chassis_fetch_data.enemy_infantry_HP,chassis_fetch_data.enemy_hero_HP
-                    ,chassis_fetch_data.remain_time,shoot_cmd_send.bullet_num,chassis_fetch_data.game_progress
+                    ,chassis_fetch_data.remain_time,shoot_cmd_send.bullet_num,chassis_fetch_data.game_progress,chassis_fetch_data.enemy_color
                     );
 
     //发送给小电脑数据

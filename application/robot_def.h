@@ -25,7 +25,7 @@
 #define YAW_ECD_GREATER_THAN_4096 1 // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
 #define PITCH_HORIZON_ECD 1340.0f      // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
 #define PITCH_MAX_ANGLE  20          // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
-#define PITCH_MIN_ANGLE -10           // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MIN_ANGLE 0           // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
 // 发射参数
 #define ONE_BULLET_DELTA_ANGLE 30    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
 #define REDUCTION_RATIO_LOADER 36.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
@@ -72,6 +72,7 @@ typedef enum
 {
     CHASSIS_ZERO_FORCE = 0,    // 电流零输入
     CHASSIS_ROTATE,            // 小陀螺模式
+    CHASSIS_NAV,
     CHASSIS_NO_FOLLOW,         // 不跟随，允许全向平移
     CHASSIS_FOLLOW_GIMBAL_YAW, // 跟随模式
 } chassis_mode_e;
@@ -111,11 +112,6 @@ typedef enum
 }
 nav_mode_e;
 
-// 功率限制（哨兵的是100w，感觉可以不用）
-typedef struct
-{ // 功率控制
-    float chassis_power_mx;
-} Chassis_Power_Data_s;
 /* ----------------用于记录时间或标志位的结构体---------------- */
 typedef struct
 {
@@ -127,6 +123,7 @@ typedef struct
     uint8_t shoot_flag;
     uint8_t cmd_error_flag;
     uint8_t fire_flag;
+    uint8_t flag;
 }DataLebel_t;
 /* ----------------用于计算热量用到的的结构体---------------- */
 
@@ -137,6 +134,36 @@ typedef struct
     uint8_t shoot_l;
     uint8_t shoot_r;
 }cal_bullet_t;
+
+/* ----------------用于计算巡航云台的的结构体---------------- */
+
+typedef struct
+{
+    uint8_t flag;
+    float yaw_init;
+    float yaw_total_angle;
+    float yaw;
+    int direction; 
+}cal_mid_round_patrol_t;
+
+typedef struct
+{
+    int32_t init_totol_round;
+    int32_t total_round;
+    uint8_t flag;
+    float yaw_init;
+}cal_round_patrol_t;
+
+typedef struct
+{
+    uint8_t flag;
+    uint16_t num;
+    float yaw_init;
+    float yaw;
+    int direction; // 1 for increasing, -1 for decreasing
+}cal_temporary_round_patrol_t;
+
+
 /* ----------------CMD应用发布的控制数据,应当由gimbal/chassis/shoot订阅---------------- */
 /**
  * @brief 对于双板情况,遥控器和pc在云台,裁判系统在底盘
@@ -149,6 +176,7 @@ typedef struct
     float vx;           // 前进方向速度
     float vy;           // 横移方向速度
     float wz;           // 旋转速度
+    float w;
     float offset_angle; // 底盘和归中位置的夹角
     chassis_mode_e chassis_mode;    
     // UI部分
@@ -203,7 +231,7 @@ typedef struct
     uint16_t enemy_infantry_HP;
     uint16_t remain_time;
      //发给视觉的数据
-    Enemy_Color_e enemy_color;   // 0 for blue, 1 for red
+    uint8_t enemy_color;
     //发给云台的数据
     uint8_t rest_heat;           // 剩余枪口热量
     uint16_t bullet_num;

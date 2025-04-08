@@ -65,14 +65,12 @@ typedef struct
 	gimbal_mode_e gimbal_mode;				 // 云台模式
 	shoot_mode_e shoot_mode;				 // 发射模式设置
 	friction_mode_e friction_mode;			 // 摩擦轮关闭
-	Chassis_Power_Data_s Chassis_Power_Data; // 功率控制
 
 	// 上一次的模式，用于flag判断
 	chassis_mode_e chassis_last_mode;
 	gimbal_mode_e gimbal_last_mode;
 	shoot_mode_e shoot_last_mode;
 	friction_mode_e friction_last_mode;
-	Chassis_Power_Data_s Chassis_last_Power_Data;
 
 } Referee_Interactive_info_t;
 
