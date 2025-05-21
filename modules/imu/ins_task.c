@@ -18,7 +18,6 @@
 #include "tim.h"
 #include "user_lib.h"
 #include "general_def.h"
-#include "master_process.h"
 
 static INS_t INS;
 static IMU_Param_t IMU_Param;
@@ -136,12 +135,8 @@ void INS_Task(void)
         INS.Gyro[Y] = BMI088.Gyro[Y];
         INS.Gyro[Z] = BMI088.Gyro[Z];
 
-        // demo function,用于修正安装误差,可以不管,本demo暂时没用
+        // 根据板子拜访情况进行调整
         IMU_Param_Correction(&IMU_Param, INS.Gyro, INS.Accel);
-
-        // 计算重力加速度矢量和b系的XY两轴的夹角,可用作功能扩展,本demo暂时没用
-        // INS.atanxz = -atan2f(INS.Accel[X], INS.Accel[Z]) * 180 / PI;
-        // INS.atanyz = atan2f(INS.Accel[Y], INS.Accel[Z]) * 180 / PI;
 
         // 核心函数,EKF更新四元数
         IMU_QuaternionEKF_Update(INS.Gyro[X], INS.Gyro[Y], INS.Gyro[Z], INS.Accel[X], INS.Accel[Y], INS.Accel[Z], dt);
@@ -166,7 +161,6 @@ void INS_Task(void)
         INS.Pitch = QEKF_INS.Pitch;
         INS.Roll = QEKF_INS.Roll;
         INS.YawTotalAngle = QEKF_INS.YawTotalAngle;
-
     }
 
     // temperature control
@@ -174,11 +168,6 @@ void INS_Task(void)
     {
         // 500hz
         IMU_Temperature_Ctrl();
-    }
-
-    if ((count++ % 1000) == 0)
-    {
-        // 1Hz 可以加入monitor函数,检查IMU是否正常运行/离线
     }
 }
 

@@ -30,8 +30,8 @@ void RobotInit()
     BSPInit();
 #if defined(GIMBAL_BOARD)
     RobotCMDInit();
-    GimbalInit();
-    ShootInit();
+    // GimbalInit();
+    // ShootInit();
 #endif
 
 #if defined(CHASSIS_BOARD)
@@ -47,9 +47,9 @@ void RobotInit()
 void RobotTask()
 {
 #if defined(GIMBAL_BOARD)
-    RobotCMDTask();
-    GimbalTask();
-    ShootTask();
+    // RobotCMDTask();
+    // GimbalTask();
+    // ShootTask();
 #endif
 
 #if defined(CHASSIS_BOARD)

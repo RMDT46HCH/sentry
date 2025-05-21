@@ -1,5 +1,4 @@
 #include "bsp_usart.h"
-#include "bsp_log.h"
 #include "stdlib.h"
 #include "memory.h"
 #include "cmsis_os.h"
@@ -29,12 +28,12 @@ USARTInstance *USARTRegister(USART_Init_Config_s *init_config)
 {
     if (idx >= DEVICE_USART_CNT) // 超过最大实例数
         while (1)
-            LOGERROR("[bsp_usart] USART exceed max instance count!");
+            ;
 
     for (uint8_t i = 0; i < idx; i++) // 检查是否已经注册过
         if (usart_instance[i]->usart_handle == init_config->usart_handle)
             while (1)
-                LOGERROR("[bsp_usart] USART instance already registered!");
+                ;
 
     USARTInstance *instance = (USARTInstance *)malloc(sizeof(USARTInstance));
     memset(instance, 0, sizeof(USARTInstance));
@@ -48,7 +47,6 @@ USARTInstance *USARTRegister(USART_Init_Config_s *init_config)
     return instance;
 }
 
-/* @todo 当前仅进行了形式上的封装,后续要进一步考虑是否将module的行为与bsp完全分离 */
 void USARTSend(USARTInstance *_instance, uint8_t *send_buf, uint16_t send_size, USART_TRANSFER_MODE mode)
 {
     switch (mode)
@@ -122,7 +120,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
         {
             HAL_UARTEx_ReceiveToIdle_DMA(usart_instance[i]->usart_handle, usart_instance[i]->recv_buff, usart_instance[i]->recv_buff_size);
             __HAL_DMA_DISABLE_IT(usart_instance[i]->usart_handle->hdmarx, DMA_IT_HT);
-            LOGWARNING("[bsp_usart] USART error callback triggered, instance idx [%d]", i);
             return;
         }
     }

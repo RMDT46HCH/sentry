@@ -42,7 +42,7 @@ void GimbalInit()
             .angle_PID = {
                 .Kp = 7, // 6
                 .Ki = 4,
-                .Kd =0.7,//0.0.6
+                .Kd =0.7,//0.6
                 .DeadBand = 0.01,
                 .Improve = PID_ChangingIntegrationRate | PID_Derivative_On_Measurement,
                 .CoefA=3,
@@ -58,17 +58,18 @@ void GimbalInit()
                 .IntegralLimit = 3000,
                 .MaxOut = 20000,
             },
-            //电机反馈来源
-            // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
             .other_angle_feedback_ptr = &gimbal_IMU_data->YawTotalAngle,
             //0为roll，1为pitch，2为yaw
             .other_speed_feedback_ptr = &gimbal_IMU_data->Gyro[2],
+            .speed_feedforward_ptr=     &yaw_motor->motor_controller.angle_PID.Output,
+            .angle_feedforward_ptr=     &gimbal_cmd_recv.yaw_offset,
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type = ANGLE_LOOP,
             .close_loop_type = ANGLE_LOOP | SPEED_LOOP,
+            .feedforward_flag=ANGLE_AND_SPEED_FEEDFORWARD,
             .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
         .motor_type = GM6020};
@@ -99,6 +100,9 @@ void GimbalInit()
             },
             .other_angle_feedback_ptr = &gimbal_IMU_data->Pitch,
             .other_speed_feedback_ptr = (&gimbal_IMU_data->Gyro[1]),
+
+            .speed_feedforward_ptr=     &pitch_motor->motor_controller.angle_PID.Output,
+            .angle_feedforward_ptr=     &gimbal_cmd_recv.pitch_offset,
         },
         .controller_setting_init_config =
          {

@@ -14,7 +14,6 @@ static GPIOInstance *gpio_instance[GPIO_MX_DEVICE_NUM] = {NULL};
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    // 如有必要,可以根据pinstate和HAL_GPIO_ReadPin来判断是上升沿还是下降沿/rise&fall等
     GPIOInstance *gpio;
     for (size_t i = 0; i < idx; i++)
     {

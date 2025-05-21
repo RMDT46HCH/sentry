@@ -15,7 +15,6 @@
 #include "bsp_usart.h"
 #include "task.h"
 #include "daemon.h"
-#include "bsp_log.h"
 #include "cmsis_os.h"
 
 #define RE_RX_BUFFER_SIZE 255u // 裁判系统接收缓冲区大小
@@ -42,14 +41,14 @@ static void JudgeReadData(uint8_t *buff)
 	// 判断帧头数据(0)是否为0xA5
 	if (buff[SOF] == REFEREE_SOF)
 	{
-		// 帧头CRC8校验
-		if (Verify_CRC8_Check_Sum(buff, LEN_HEADER) == TRUE)
-		{
-			// 统计一帧数据长度(byte),用于CR16校验
-			judge_length = buff[DATA_LENGTH] + LEN_HEADER + LEN_CMDID + LEN_TAIL;
-			// 帧尾CRC16校验
-			if (Verify_CRC16_Check_Sum(buff, judge_length) == TRUE)
-			{
+		// // 帧头CRC8校验
+		// if (Verify_CRC8_Check_Sum(buff, LEN_HEADER) == TRUE)
+		// {
+		// 	// 统计一帧数据长度(byte),用于CR16校验
+		// 	judge_length = buff[DATA_LENGTH] + LEN_HEADER + LEN_CMDID + LEN_TAIL;
+		// 	// 帧尾CRC16校验
+		// 	if (Verify_CRC16_Check_Sum(buff, judge_length) == TRUE)
+		// 	{
 				// 2个8位拼成16位int
 				referee_info.CmdID = (buff[6] << 8 | buff[5]);
 				// 解析数据命令码,将数据拷贝到相应结构体中(注意拷贝数据的长度)
@@ -93,11 +92,11 @@ static void JudgeReadData(uint8_t *buff)
 				case ID_projectile_allowance: // 0x0208
 					memcpy(&referee_info.ProjectileAllowance, (buff + DATA_Offset), LEN_projectile_allowance);
 					break;
-				case ID_student_interactive: // 0x0301   syhtodo接收代码未测试
+				case ID_student_interactive: // 0x0302   
 					memcpy(&referee_info.ReceiveData, (buff + DATA_Offset), LEN_receive_data);
 					break;
-				}
-			}
+				// }
+			// }
 		}
 		// 首地址加帧长度,指向CRC16下一字节,用来判断是否为0xA5,从而判断一个数据包是否有多帧数据
 		if (*(buff + sizeof(xFrameHeader) + LEN_CMDID + referee_info.FrameHeader.DataLength + LEN_TAIL) == 0xA5)
@@ -117,7 +116,6 @@ static void RefereeRxCallback()
 static void RefereeLostCallback(void *arg)
 {
 	USARTServiceInit(referee_usart_instance);
-	LOGWARNING("[rm_ref] lost referee data");
 }
 
 /* 裁判系统通信初始化 */

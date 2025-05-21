@@ -26,9 +26,9 @@ typedef enum
 typedef enum
 {
     FEEDFORWARD_NONE = 0b00,
-    CURRENT_FEEDFORWARD = 0b01,
+    ANGLE_FEEDFORWARD = 0b01,
     SPEED_FEEDFORWARD = 0b10,
-    CURRENT_AND_SPEED_FEEDFORWARD = CURRENT_FEEDFORWARD | SPEED_FEEDFORWARD,
+    ANGLE_AND_SPEED_FEEDFORWARD = ANGLE_FEEDFORWARD | SPEED_FEEDFORWARD,
 } Feedfoward_Type_e;
 
 /* 反馈来源设定,若设为OTHER_FEED则需要指定数据来源指针,详见Motor_Controller_s*/
@@ -67,7 +67,6 @@ typedef struct
     Feedback_Source_e angle_feedback_source;       // 角度反馈类型
     Feedback_Source_e speed_feedback_source;       // 速度反馈类型
     Feedfoward_Type_e feedforward_flag;            // 前馈标志
-
 } Motor_Control_Setting_s;
 
 /* 电机控制器,包括其他来源的反馈数据指针,3环控制器和电机的参考输入*/
@@ -76,6 +75,7 @@ typedef struct
 {
     float *other_angle_feedback_ptr; // 其他反馈来源的反馈数据指针
     float *other_speed_feedback_ptr;
+    float *angle_feedforward_ptr;
     float *speed_feedforward_ptr;
     float *current_feedforward_ptr;
 
@@ -106,6 +106,7 @@ typedef struct
 {
     float *other_angle_feedback_ptr; // 角度反馈数据指针,注意电机使用total_angle
     float *other_speed_feedback_ptr; // 速度反馈数据指针,单位为angle per sec
+    float *angle_feedforward_ptr; // 电流前馈数据指针
 
     float *speed_feedforward_ptr;   // 速度前馈数据指针
     float *current_feedforward_ptr; // 电流前馈数据指针

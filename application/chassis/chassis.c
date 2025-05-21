@@ -11,29 +11,21 @@
 #include "buzzer.h"
 #include "rm_referee.h"
 #include "referee_task.h"
-#include "can_comm.h"
+#include "Board2Board.h"
 
 //bsp
 #include "bsp_dwt.h"
 #include "arm_math.h"
 /************************************** CommUsed **************************************/
-/* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
-static CANCommInstance *chassis_can_comm;               // 双板通信CAN comm
+static BoardCommInstance *chassis_can_comm;               // 双板通信CAN comm
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;             // 底盘接收到的控制命令（发布中心发给底盘的）
 static Chassis_Upload_Data_s chassis_feedback_data;     // 底盘回传的反馈数据
-
 static Referee_Interactive_info_t ui_data;              // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
 static referee_info_t* referee_data;                    // 用于获取裁判系统的数据
 
-
 /*********************************** CalculateSpeed ***********************************/
-static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; 
-static float chassis_vx, chassis_vy;                    // 将云台系的速度投影到底盘
-static float vt_lf, vt_rf, vt_lb, vt_rb;                // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
-static float sin_theta, cos_theta;                      //麦轮解算用
-static float vx,vy;                                     //获取车体信息要用到的中间变量
-static float cnt=0;
-
+static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // 四个轮子的实例
+static Cal_Chassis_Info_t chassis_info;                             // 底盘速度计算信息
 
 void ChassisInit()
 {
@@ -93,7 +85,7 @@ void ChassisInit()
 
 /************************************** ChassisCommInit **************************************/
     //双板通信
-    CANComm_Init_Config_s comm_conf = {
+    BoardComm_Init_Config_s comm_conf = {
         .can_config = {
             .can_handle = &hcan2,
             //云台的tx是底盘的rx，别搞错了！！！
@@ -103,7 +95,7 @@ void ChassisInit()
         .recv_data_len = sizeof(Chassis_Ctrl_Cmd_s),
         .send_data_len = sizeof(Chassis_Upload_Data_s),
     };
-    chassis_can_comm = CANCommInit(&comm_conf); // can comm初始化
+    chassis_can_comm = BoardCommInit(&comm_conf); // can comm初始化
 }
 
 /*****************************************MoveChassis********************************************/
@@ -130,18 +122,20 @@ static void ChassisStateSet()
  */
 static void ChassisRotateSet()
 {
-    cnt = (float32_t)DWT_GetTimeline_s();//用于变速小陀螺
+    chassis_info.cnt = (float32_t)DWT_GetTimeline_s();//用于变速小陀螺
     switch (chassis_cmd_recv.chassis_mode)
     {
         case CHASSIS_NO_FOLLOW: // 底盘不旋转,但维持全向机动
             chassis_cmd_recv.wz = 0;
         break;
-
+        case CHASSIS_FOLLOW_GIMBAL_YAW: // (底盘跟随云台)（系数待调）
+            chassis_cmd_recv.wz = -0.05*chassis_cmd_recv.offset_angle*abs(chassis_cmd_recv.offset_angle);
+        break;
         case CHASSIS_ROTATE: // 变速小陀螺
-            chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*4.75;
+            chassis_cmd_recv.wz = (1200+100*(float32_t)sin(chassis_info.cnt))*4.75;
         break;
         case CHASSIS_NAV:
-        chassis_cmd_recv.wz = (1200+100*(float32_t)sin(cnt))*4.75*chassis_cmd_recv.w/100;
+            chassis_cmd_recv.wz = (1200+100*(float32_t)sin(chassis_info.cnt))*4.75*chassis_cmd_recv.w/100;
         break;
 
         default:
@@ -155,16 +149,16 @@ static void ChassisRotateSet()
  */
 static void MecanumCalculate()
 {   
-    cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
-    sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
+    chassis_info.cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
+    chassis_info.sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
 
-    chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta; 
-    chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
+    chassis_info.chassis_vx = chassis_cmd_recv.vx * chassis_info.cos_theta - chassis_cmd_recv.vy * chassis_info.sin_theta; 
+    chassis_info.chassis_vy = chassis_cmd_recv.vx * chassis_info.sin_theta + chassis_cmd_recv.vy * chassis_info.cos_theta;
 
-    vt_lf = chassis_vx - chassis_vy - chassis_cmd_recv.wz ;
-    vt_lb = chassis_vx + chassis_vy - chassis_cmd_recv.wz ;
-    vt_rb = chassis_vx - chassis_vy + chassis_cmd_recv.wz ;
-    vt_rf = chassis_vx + chassis_vy + chassis_cmd_recv.wz ;
+    chassis_info.vt_lf = chassis_info.chassis_vx - chassis_info.chassis_vy - chassis_cmd_recv.wz ;
+    chassis_info.vt_lb = chassis_info.chassis_vx + chassis_info.chassis_vy - chassis_cmd_recv.wz ;
+    chassis_info.vt_rb = chassis_info.chassis_vx - chassis_info.chassis_vy + chassis_cmd_recv.wz ;
+    chassis_info.vt_rf = chassis_info.chassis_vx + chassis_info.chassis_vy + chassis_cmd_recv.wz ;
 }
 
 /**
@@ -172,11 +166,11 @@ static void MecanumCalculate()
  *
  */
 static void ChassisOutput()
-{ 
-    DJIMotorSetRef(motor_lf, vt_lf);
-    DJIMotorSetRef(motor_rf, vt_rf);
-    DJIMotorSetRef(motor_lb, vt_lb);
-    DJIMotorSetRef(motor_rb, vt_rb);
+{
+    DJIMotorSetRef(motor_lf, chassis_info.vt_lf);
+    DJIMotorSetRef(motor_rf, chassis_info.vt_rf);
+    DJIMotorSetRef(motor_lb, chassis_info.vt_lb);
+    DJIMotorSetRef(motor_rb, chassis_info.vt_rb);
 }
 
 /*****************************************SendData********************************************/
@@ -186,10 +180,10 @@ static void ChassisOutput()
 static void SendChassisData()
 {
     //to 巡航
-    vx = (motor_lf->measure.speed_aps +motor_lb->measure.speed_aps - motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000 ;
-    vy = (-motor_lf->measure.speed_aps +motor_lb->measure.speed_aps + motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000  ;
-    chassis_feedback_data.real_vx = vx * cos_theta + vy * sin_theta;
-    chassis_feedback_data.real_vy = -vx * sin_theta + vy * cos_theta;
+    chassis_info.vx = (motor_lf->measure.speed_aps +motor_lb->measure.speed_aps - motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000 ;
+    chassis_info.vy = (-motor_lf->measure.speed_aps +motor_lb->measure.speed_aps + motor_rb->measure.speed_aps - motor_rf->measure.speed_aps) / 4.0f / REDUCTION_RATIO_WHEEL / 360.0f * PERIMETER_WHEEL/1000  ;
+    chassis_feedback_data.real_vx = chassis_info.vx * chassis_info.cos_theta + chassis_info.vy * chassis_info.sin_theta;
+    chassis_feedback_data.real_vy = -chassis_info.vx * chassis_info.sin_theta + chassis_info.vy * chassis_info.cos_theta;
 }
 
 /**
@@ -238,7 +232,7 @@ void ChassisTask()
 {
 /********************************************   GetRecvData  *********************************************/ 
     // 获取新的控制信息
-    chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chassis_can_comm);
+    chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)BoardCommGet(chassis_can_comm);
 /****************************************     ControlChassis     *****************************************/
     //底盘动与不动
     ChassisStateSet();
@@ -254,5 +248,5 @@ void ChassisTask()
     SendJudgeData();
     // 根据电机的反馈速度计算真实速度发给巡航
     SendChassisData(); 
-    CANCommSend(chassis_can_comm, (void *)&chassis_feedback_data);
+    BoardCommSend(chassis_can_comm, (void *)&chassis_feedback_data);
 }

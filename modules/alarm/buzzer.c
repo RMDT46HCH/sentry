@@ -2,7 +2,7 @@
 #include "buzzer.h"
 #include "bsp_dwt.h"
 #include "string.h"
-
+#include <stdlib.h>
 static PWMInstance *buzzer;
 // static uint8_t idx;
 static BuzzzerInstance *buzzer_list[BUZZER_DEVICE_CNT] = {0};

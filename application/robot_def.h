@@ -3,7 +3,7 @@
 #define ROBOT_DEF_H
 
 #include "ins_task.h"
-#include "master_process.h"
+#include "minipc_comm.h"
 #include "stdint.h"
 #include "referee_protocol.h"
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
@@ -121,6 +121,7 @@ typedef struct
     uint8_t vision_flag;
     uint8_t shoot_flag;
     uint8_t fire_flag;
+    uint8_t prepare_flag;
     uint8_t flag;
 }DataLebel_t;
 /* ----------------用于计算热量用到的的结构体---------------- */
@@ -129,10 +130,25 @@ typedef struct
 {
     uint16_t shoot_heat_l;//枪口当前热量(计算值)
     uint16_t shoot_heat_r;//枪口当前热量(计算值)
-    uint8_t shoot_l;
+    uint8_t shoot_l;      //（左/右）枪管发射状态
     uint8_t shoot_r;
-}cal_bullet_t;
+}cal_heat_t;
+/* ----------------用于计算底盘速度用到的的结构体---------------- */
 
+typedef struct
+{
+ float chassis_vx;
+ float chassis_vy;                    // 将云台系的速度投影到底盘
+ float vt_lf;
+ float vt_rf;
+ float vt_lb;
+ float vt_rb;                // 底盘速度解算后的临时输出,跟据功率的多少再乘上一个系数
+ float sin_theta;
+ float cos_theta;                      //麦轮解算用
+ float vx;
+ float vy;                                     //获取车体信息要用到的中间变量
+ float cnt;
+}Cal_Chassis_Info_t;
 /* ----------------用于计算巡航云台的的结构体---------------- */
 
 typedef struct
@@ -183,7 +199,11 @@ typedef struct
 typedef struct
 { // 云台角度控制
     float yaw;
+    float yaw_last;
+    float yaw_offset;
     float pitch;
+    float pitch_last;
+    float pitch_offset;
     float chassis_rotate_wz;
     gimbal_mode_e gimbal_mode;
     nav_mode_e nav_mode;

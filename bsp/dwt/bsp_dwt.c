@@ -64,9 +64,7 @@ float DWT_GetDeltaT(uint32_t *cnt_last)
     volatile uint32_t cnt_now = DWT->CYCCNT;
     float dt = ((uint32_t)(cnt_now - *cnt_last)) / ((float)(CPU_FREQ_Hz));
     *cnt_last = cnt_now;
-
     DWT_CNT_Update();
-
     return dt;
 }
 

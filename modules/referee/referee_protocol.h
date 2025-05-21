@@ -18,7 +18,7 @@
 #define REFEREE_SOF 0xA5 // 起始字节,协议固定为0xA5
 #define Robot_Red 0
 #define Robot_Blue 1
-#define Communicate_Data_LEN 5 // 自定义交互数据长度，该长度决定了我方发送和他方接收，自定义交互数据协议更改时只需要更改此宏定义即可
+#define Communicate_Data_LEN 12 // 自定义交互数据长度，该长度决定了我方发送和他方接收，自定义交互数据协议更改时只需要更改此宏定义即可
 
 #pragma pack(1)
 
@@ -81,7 +81,7 @@ typedef enum
 	ID_robot_hurt = 0x0206,				   // 伤害状态数据
 	ID_shoot_data = 0x0207,				   // 实时射击数据
 	ID_projectile_allowance=0x0208,
-	ID_student_interactive = 0x0301,	   // 机器人间交互数据
+	ID_student_interactive = 0x0302,	   // 机器人间交互数据
 } CmdID_e;
 
 /* 命令码数据段长,根据官方协议来定义长度，还有自定义数据长度 */
@@ -99,7 +99,7 @@ typedef enum
 	LEN_robot_hurt = 1,							 // 0x0206
 	LEN_shoot_data = 7,							 // 0x0207
 	LEN_projectile_allowance=6,
-	LEN_receive_data = 6 + Communicate_Data_LEN, // 0x0301
+	LEN_receive_data = 30, // 0x0302
 
 } JudgeDataLength_e;
 
@@ -289,31 +289,10 @@ typedef enum
 } Interactive_Data_Length_e;
 
 /****************************自定义交互数据****************************/
-/*
-	学生机器人间通信 cmd_id 0x0301，内容 ID:0x0200~0x02FF
-	自定义交互数据 机器人间通信：0x0301。
-	发送频率：上限 10Hz
-*/
-// 自定义交互数据协议，可更改，更改后需要修改最上方宏定义数据长度的值
-typedef struct
-{
-	uint8_t data[Communicate_Data_LEN]; // 数据段,n需要小于113
-} robot_interactive_data_t;
-
-// 机器人交互信息_发送
-typedef struct
-{
-	xFrameHeader FrameHeader;
-	uint16_t CmdID;
-	ext_student_interactive_header_data_t datahead;
-	robot_interactive_data_t Data; // 数据段
-	uint16_t frametail;
-} Communicate_SendData_t;
 // 机器人交互信息_接收
 typedef struct
 {
-	ext_student_interactive_header_data_t datahead;
-	robot_interactive_data_t Data; // 数据段
+	uint8_t data[30];
 } Communicate_ReceiveData_t;
 
 /****************************UI交互数据****************************/

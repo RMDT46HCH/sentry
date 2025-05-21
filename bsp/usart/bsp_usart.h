@@ -20,7 +20,6 @@ typedef enum
 } USART_TRANSFER_MODE;
 
 // 串口实例结构体,每个module都要包含一个实例.
-// 由于串口是独占的点对点通信,所以不需要考虑多个module同时使用一个串口的情况,因此不用加入id;当然也可以选择加入,这样在bsp层可以访问到module的其他信息
 typedef struct
 {
     uint8_t recv_buff[USART_RXBUFF_LIMIT]; // 预先定义的最大buff大小,如果太小请修改USART_RXBUFF_LIMIT

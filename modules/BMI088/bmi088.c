@@ -373,12 +373,6 @@ void BMI088CalibrateIMU(BMI088Instance *_bmi088)
     _bmi088->acc_coef *= 9.805 / _bmi088->gNorm;
 }
 
-// 考虑阻塞模式和非阻塞模式的兼容性,通过条件编译(则需要在编译前修改宏定义)或runtime参数判断
-// runtime的开销不大(一次性判断),但是需要修改函数原型,增加参数,代码长度增加(但不多)
-// runtime如何修改callback?根据参数选择是否给spi传入callback,如果是阻塞模式,则不传入callback,如果是非阻塞模式,则传入callback(bsp会检查是否NULL)
-// 条件编译的开销小,但是需要修改宏定义,增加编译时间,同时人力介入
-// 根据实际情况选择(说了和没说一样!)
-
 BMI088Instance *BMI088Register(BMI088_Init_Config_s *config)
 {
     // 申请内存
@@ -389,21 +383,6 @@ BMI088Instance *BMI088Register(BMI088_Init_Config_s *config)
             config->spi_acc_config.id =
                 config->spi_gyro_config.id =
                     config->heat_pwm_config.id = bmi088_instance;
-    // @todo:
-    // 目前只实现了!!!阻塞读取模式!!!.如果需要使用IT模式,则需要修改这里的代码,为spi和gpio注册callback(默认为NULL)
-    // 还需要设置SPI的传输模式为DMA模式或IT模式(默认为blocking)
-    // 可以通过conditional compilation或者runtime参数判断
-    // code to go here ...
-
-    // INT_ACC EXTI CALLBACK: 检查是否有传输正在进行,如果没有则开启SPI DMA传输,有则置位wait标志位;
-    // 第一次是加速度计,第二次是温度.
-
-    // INT_GYRO EXTI CALLBACK: 开启SPI DMA传输,不会出现等待传输的情况
-    // SPI_GYRO DMA CALLBACK: 解算陀螺仪数据,
-    // SPI_ACC DMA CALLBACK: 解算加速度计数据,清除温度wait标志位并启动温度传输,第二次进入中断时解算温度数据
-
-    // 还有其他方案可用,比如阻塞等待传输完成,但是比较笨.
-
     // 根据参数选择工作模式
     if (config->work_mode == BMI088_BLOCK_PERIODIC_MODE)
     {

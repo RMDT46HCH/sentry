@@ -16,7 +16,6 @@
 
 #include "main.h"
 #include "stdint.h"
-#include "bsp_log.h"
 
 typedef struct
 {
@@ -36,7 +35,6 @@ typedef struct
         float tstart = DWT_GetTimeline_s();      \
         code;                                    \
         dt = DWT_GetTimeline_s() - tstart;       \
-        LOGINFO("[DWT] " #dt " = %f s\r\n", dt); \
     } while (0)
 
 /**

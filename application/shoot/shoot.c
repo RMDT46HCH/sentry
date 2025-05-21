@@ -10,16 +10,15 @@
 /************************************* ShootUsed *************************************/
 static DJIMotorInstance *friction_l, *friction_r, *loader; // 拨盘电机
 static ServoInstance *change;
-static float hibernate_time,dead_time,loader_set_angle = 0;
 
 /************************************** CommUsed **************************************/
 static Publisher_t *shoot_pub;
-static Shoot_Ctrl_Cmd_s shoot_cmd_recv; // 来自cmd的发射控制信息
+static Shoot_Ctrl_Cmd_s shoot_cmd_recv;
 static Subscriber_t *shoot_sub;
-static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信息
+static Shoot_Upload_Data_s shoot_feedback_data; 
 
 /************************************** HeatUsed **************************************/
-static cal_bullet_t cal_bullet;
+static cal_heat_t cal_heat;     //用于计算超热量
 
 void ShootInit()
 {
@@ -114,9 +113,9 @@ void ShootInit()
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
 /**************************************    HeatInit    *************************************/
-    memset(&cal_bullet,0,sizeof(cal_bullet));
-    cal_bullet.shoot_l=1;
-    cal_bullet.shoot_r=0;
+    memset(&cal_heat,0,sizeof(cal_heat));
+    cal_heat.shoot_l=1;
+    cal_heat.shoot_r=0;
 }
 
 
@@ -128,54 +127,44 @@ void ShootInit()
 static void CalHeat()
 {
     //切换到右枪管
-    if(cal_bullet.shoot_l == 0&&cal_bullet.shoot_r == 1)
+    if(cal_heat.shoot_l == 0&&cal_heat.shoot_r == 1)
     {
         Servo_Motor_FreeAngle_Set(change,135);
-        //先等1s，等切换枪管完再发射
-        if(DWT_GetTimeline_s()>1)
         shoot_feedback_data.over_heat_flag=0;
     }
     //切换到左枪管
-    else if(cal_bullet.shoot_l == 1&&cal_bullet.shoot_r == 0)
+    else if(cal_heat.shoot_l == 1&&cal_heat.shoot_r == 0)
     {
         Servo_Motor_FreeAngle_Set(change,32);
-        if(DWT_GetTimeline_s()>1)
         shoot_feedback_data.over_heat_flag=0;
     }
     //超热量时换枪管
-    if(shoot_cmd_recv.left_bullet_heat>HEAT_LIMIT &&cal_bullet.shoot_l==1)
+    if(shoot_cmd_recv.left_bullet_heat>HEAT_LIMIT &&cal_heat.shoot_l==1)
     {
         shoot_feedback_data.over_heat_flag=1;
-        if(DWT_GetTimeline_s()>1)
-        {
-            // 切换到右枪管
-            cal_bullet.shoot_l = 0;
-            cal_bullet.shoot_r = 1;
-        }
+        // 切换到右枪管
+        cal_heat.shoot_l = 0;
+        cal_heat.shoot_r = 1;
         //两个枪管热量均满，超热量
-        if(cal_bullet.shoot_heat_r > CHANGE_LIMIT)
+        if(cal_heat.shoot_heat_r > CHANGE_LIMIT)
         {
             shoot_feedback_data.over_heat_flag=1;
         }
     }
         
-    else if (shoot_cmd_recv.right_bullet_heat > HEAT_LIMIT && cal_bullet.shoot_r == 1)
+    else if (shoot_cmd_recv.right_bullet_heat > HEAT_LIMIT && cal_heat.shoot_r == 1)
     {
         shoot_feedback_data.over_heat_flag=1;
-        if(DWT_GetTimeline_s()>1)
-        {
-            // 切换到左枪管
-            cal_bullet.shoot_l = 1;
-            cal_bullet.shoot_r = 0;
-        }
-
-        if(cal_bullet.shoot_heat_l > CHANGE_LIMIT)
+        // 切换到左枪管
+        cal_heat.shoot_l = 1;
+        cal_heat.shoot_r = 0;
+        if(cal_heat.shoot_heat_l > CHANGE_LIMIT)
         {
             shoot_feedback_data.over_heat_flag=1;
         }
     }
     //让枪管恢复正常
-    else if(cal_bullet.shoot_heat_l<RECOVER_HEAT_LIMIT||cal_bullet.shoot_heat_r < RECOVER_HEAT_LIMIT)
+    else if(cal_heat.shoot_heat_l<RECOVER_HEAT_LIMIT||cal_heat.shoot_heat_r < RECOVER_HEAT_LIMIT)
     {
         shoot_feedback_data.over_heat_flag=0;
     }
@@ -190,7 +179,7 @@ static void ShootStateSet()
     {
         DJIMotorStop(friction_l);
         DJIMotorStop(friction_r);
-        DJIMotorStop(loader);
+        DJIMotorStop(loader);// 停止拨盘,一定要转成速度闭环，不然等着反转起飞吧！
     }
     else // 恢复运行
     {
@@ -218,11 +207,10 @@ static void ShootLoaderSet()
     case LOAD_BURSTFIRE:
         DJIMotorOuterLoop(loader, SPEED_LOOP);
         DJIMotorSetRef(loader, 26000);
-        // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度
         break;
     // 拨盘反转,对速度闭环
     case LOAD_REVERSE:
-            DJIMotorOuterLoop(loader, SPEED_LOOP);                                              // 切换到角度环
+            DJIMotorOuterLoop(loader, SPEED_LOOP);
             DJIMotorSetRef(loader, -4000);
 
         break;

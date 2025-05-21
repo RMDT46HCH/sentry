@@ -111,13 +111,8 @@ bsp/dwt/bsp_dwt.c \
 bsp/pwm/bsp_pwm.c \
 bsp/gpio/bsp_gpio.c \
 bsp/spi/bsp_spi.c \
-bsp/iic/bsp_iic.c \
 bsp/can/bsp_can.c \
 bsp/usart/bsp_usart.c \
-bsp/usb/bsp_usb.c \
-bsp/log/bsp_log.c \
-bsp/flash/bsp_flash.c \
-bsp/bsp_tools.c \
 modules/algorithm/controller.c \
 modules/algorithm/kalman_filter.c \
 modules/algorithm/QuaternionEKF.c \
@@ -128,9 +123,8 @@ modules/BMI088/bmi088.c \
 modules/imu/BMI088driver.c \
 modules/imu/BMI088Middleware.c \
 modules/imu/ins_task.c \
-modules/ist8310/ist8310.c \
-modules/master_machine/master_process.c \
-modules/master_machine/seasky_protocol.c \
+modules/message_center/message_center.c \
+modules/minipc_comm/minipc_protocol.c \
 modules/motor/DJImotor/dji_motor.c \
 modules/motor/servo_motor/servo_motor.c \
 modules/motor/motor_task.c \
@@ -140,8 +134,8 @@ modules/referee/referee_UI.c \
 modules/referee/referee_task.c\
 modules/remote/remote_control.c \
 modules/super_cap/super_cap.c \
-modules/can_comm/can_comm.c \
-modules/message_center/message_center.c \
+modules/can_comm/Board2Board.c \
+modules/minipc_comm/minipc_comm.c \
 modules/daemon/daemon.c \
 modules/alarm/buzzer.c \
 application/gimbal/gimbal.c \
@@ -234,14 +228,12 @@ C_INCLUDES =  \
 -Ibsp/spi \
 -Ibsp/iic \
 -Ibsp/log \
--Ibsp/flash \
 -Ibsp/pwm \
 -Ibsp \
 -Imodules/algorithm \
 -Imodules/BMI088 \
 -Imodules/imu \
--Imodules/ist8310 \
--Imodules/master_machine \
+-Imodules/minipc_comm \
 -Imodules/motor/DJImotor \
 -Imodules/motor/servo_motor \
 -Imodules/motor \

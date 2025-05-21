@@ -5,19 +5,17 @@
 // module
 #include "remote_control.h"
 #include "ins_task.h"
-#include "master_process.h"
+#include "minipc_comm.h"
 #include "message_center.h"
 #include "general_def.h"
 #include "dji_motor.h"
 #include "buzzer.h"
 #include "rm_referee.h"
-#include "can_comm.h"
+#include "referee_task.h"
+#include "Board2Board.h"
 
 // bsp
 #include "bsp_dwt.h"
-#include "bsp_log.h"
-
-
 
 /* cmd应用包含的模块实例指针和交互信息存储*/
 /************************************** HuartUsed **************************************/
@@ -26,7 +24,7 @@ static Minipc_Recv_s *minipc_recv_data;         //小电脑接收数据,初始�
 static Minipc_Send_s  minipc_send_data;         // 视觉发送数据
 
 /**************************************  CANUsed  **************************************/
-static CANCommInstance *cmd_can_comm;           // 双板通信
+static BoardCommInstance *cmd_can_comm;           // 双板通信
 
 /**************************************ChassisUsed**************************************/
 static Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
@@ -46,10 +44,11 @@ static Shoot_Upload_Data_s shoot_fetch_data;    // 从发射获取的反馈信�
 
 /****************************************  Other  ****************************************/
 static DataLebel_t DataLebel;
-static  BuzzzerInstance *aim_success_buzzer;
-static  cal_round_patrol_t round_patrol;
+static BuzzzerInstance *aim_success_buzzer;
+static cal_round_patrol_t round_patrol;
 static cal_mid_round_patrol_t mid_round_patrol;
 static cal_temporary_round_patrol_t tem_round_patrol;
+
 
 
 
@@ -60,42 +59,42 @@ void RobotCMDInit()
 {
 /**************************************  HuartInit  **************************************/
     rc_data = RemoteControlInit(&huart3);       // 遥控器通信串口初始化
-    minipc_recv_data=minipcInit(&huart1);       // 视觉通信串口初始化
-/************************************** GimbalCommInit **************************************/
-    gimbal_cmd_pub = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
-    gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
-/************************************** ShootCommInit **************************************/
-    shoot_cmd_pub = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
-    shoot_feed_sub = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
-/************************************** ChassisCommInit **************************************/
-    // 双板CAN通信初始化  
-    CANComm_Init_Config_s comm_conf = {
-        .can_config = 
-        {
-            .can_handle = &hcan2,
-            .tx_id = 0x200,
-            .rx_id =  0x209,
-        },
-        .recv_data_len = sizeof(Chassis_Upload_Data_s),
-        .send_data_len = sizeof(Chassis_Ctrl_Cmd_s),
-    };
-    cmd_can_comm = CANCommInit(&comm_conf);
+//     minipc_recv_data=minipcInit(&huart1);       // 视觉通信串口初始化
+// /************************************** GimbalCommInit **************************************/
+//     gimbal_cmd_pub = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
+//     gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
+// /************************************** ShootCommInit **************************************/
+//     shoot_cmd_pub = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
+//     shoot_feed_sub = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
+// /************************************** ChassisCommInit **************************************/
+//     // 双板CAN通信初始化  
+//     BoardComm_Init_Config_s comm_conf = {
+//         .can_config = 
+//         {
+//             .can_handle = &hcan2,
+//             .tx_id = 0x200,
+//             .rx_id =  0x209,
+//         },
+//         .recv_data_len = sizeof(Chassis_Upload_Data_s),
+//         .send_data_len = sizeof(Chassis_Ctrl_Cmd_s),
+//     };
+//     cmd_can_comm = BoardCommInit(&comm_conf);
 
-/**************************************   BufferInit  **************************************/
-    Buzzer_config_s aim_success_buzzer_config= {
-        .alarm_level=ALARM_LEVEL_ABOVE_MEDIUM,
-        .octave=OCTAVE_2,
-    };
+// /**************************************   BufferInit  **************************************/
+//     Buzzer_config_s aim_success_buzzer_config= {
+//         .alarm_level=ALARM_LEVEL_ABOVE_MEDIUM,
+//         .octave=OCTAVE_2,
+//     };
 
-    aim_success_buzzer= BuzzerRegister(&aim_success_buzzer_config);
-/**************************************   OtherInit  **r************************************/
-    shoot_fetch_data.over_heat_flag=0;
-    //让云台水平
-    gimbal_cmd_send.pitch = 0;
-    mid_round_patrol.direction=1;
-    tem_round_patrol.direction=1;
-    //将标志位全都置0
-    memset(&DataLebel,0,sizeof(DataLebel));
+//     aim_success_buzzer= BuzzerRegister(&aim_success_buzzer_config);
+// /**************************************   OtherInit  **r************************************/
+//     shoot_fetch_data.over_heat_flag=0;
+//     //让云台水平
+//     gimbal_cmd_send.pitch = 0;
+//     mid_round_patrol.direction=1;
+//     tem_round_patrol.direction=1;
+//     //将标志位全都置0
+//     memset(&DataLebel,0,sizeof(DataLebel));
 }
 
 
@@ -149,24 +148,7 @@ static void GimbalLocationLimit()
  */
 static void ShootCheck()
 {
-    if(shoot_cmd_send.load_mode==LOAD_BURSTFIRE)
-    {
-        //拨盘速度小于100，且超过1s，认为卡弹，进行回退
-        if(abs(shoot_fetch_data.speed)<100&&DWT_GetTimeline_s()>1)
-        {
-            shoot_fetch_data.loader_error_flag=1;
-        }
-        if(shoot_fetch_data.loader_error_flag==1)
-        {
-            shoot_cmd_send.load_mode=LOAD_REVERSE;
-            shoot_fetch_data.loader_error_flag=0;
-        }
-    }
-    //回退1s，继续射
-    else if(shoot_cmd_send.load_mode==LOAD_REVERSE&&DWT_GetTimeline_s()>1)
-    {
-        shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
-    }
+
 }
 
 /**
@@ -183,10 +165,13 @@ static void VisionJudge()
             //离装甲板距离较近时，开火
             aim_success_buzzer->loudness=0.5;
             DataLebel.fire_flag=1;
+            DataLebel.prepare_flag=0;
             DataLebel.flag=1;
         }
         else
         {
+            DataLebel.prepare_flag=1;
+            DataLebel.fire_flag=0;
             AlarmSetStatus(aim_success_buzzer, ALARM_OFF);
         }
     }
@@ -228,7 +213,7 @@ static void BasicFunctionSet()
     shoot_cmd_send.shoot_mode = SHOOT_ON;
     shoot_cmd_send.friction_mode = FRICTION_ON;
     shoot_cmd_send.shoot_rate=8;
-    shoot_cmd_send.dead_time = 600;
+    // shoot_cmd_send.dead_time = 600;
 }
 
 /********************************RemoteControl****************************/
@@ -253,11 +238,11 @@ static void ChassisRC()
 
     if (switch_is_down(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
+        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
     }
     else if (switch_is_mid(rc_data[TEMP].rc.switch_left))
     {
-        chassis_cmd_send.chassis_mode=CHASSIS_ROTATE;
+        chassis_cmd_send.chassis_mode=CHASSIS_NO_FOLLOW;
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_left))
     {
@@ -378,26 +363,26 @@ static void GimbalAC()
         //上方不扫，减少扫描范围
         gimbal_cmd_send.pitch =20*abs(sin(3.0*DataLebel.t_pitch));
 
-        if (switch_is_down(rc_data[TEMP].rc.switch_left))
-        {
+        // if (switch_is_down(rc_data[TEMP].rc.switch_left))
+        // {
             RoundPatrol();
-        }
-        else
-        {
-            MidRoundPatrol();
-        }
+        // }
+        // else
+        // {
+        //     MidRoundPatrol();
+        // }
     }
 
     else
     {
-        if(DataLebel.flag==2)
-        {
-            TemporaryPatrol();
-        }
-        else
-        {
+        // if(DataLebel.flag==2)
+        // {
+        //     TemporaryPatrol();
+        // }
+        // else
+        // {
             FoundEnermy();
-        }
+        // }
 
     }
 }
@@ -424,12 +409,16 @@ static void ShootAC()
         shoot_cmd_send.load_mode=LOAD_STOP;
         else
         {
-            shoot_cmd_send.load_mode=LOAD_STOP;
+            shoot_cmd_send.load_mode=LOAD_BURSTFIRE;
             //ShootCheck();
         }
     }
     else
     {
+        if(DataLebel.prepare_flag==1)
+        {
+            shoot_cmd_send.load_mode=LOAD_REVERSE;
+        }
         shoot_cmd_send.load_mode=LOAD_STOP;
     }
 }
@@ -461,8 +450,13 @@ static void ControlDataDeal()
         BasicFunctionSet();
         if(DataLebel.vision_flag==1)
         {
-            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw)+0.00001;   //往右获得的yaw是减
+            gimbal_cmd_send.yaw_last= gimbal_cmd_send.yaw;
+            gimbal_cmd_send.yaw-=(0.0036f*minipc_recv_data->Vision.yaw);   //往右获得的yaw是减
+            gimbal_cmd_send.yaw_offset=gimbal_cmd_send.yaw-gimbal_cmd_send.yaw_last;
+
+            gimbal_cmd_send.pitch_last= gimbal_cmd_send.pitch;
             gimbal_cmd_send.pitch -= 0.0037f*minipc_recv_data->Vision.pitch;
+            gimbal_cmd_send.pitch_offset=gimbal_cmd_send.pitch-gimbal_cmd_send.pitch_last;
         }
         else
         {
@@ -504,9 +498,10 @@ static void SendJudgeShootData()
 /* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
 void RobotCMDTask()
 {
+    
 /**************************************  GetFetchData  **************************************/
     // 从其他应用获取回传数据
-    chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
+    chassis_fetch_data = *(Chassis_Upload_Data_s *)BoardCommGet(cmd_can_comm);
     //获取订阅者信息
     SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
     SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
@@ -515,8 +510,7 @@ void RobotCMDTask()
     //在不同挡位下设置对应的不同模式
     ControlDataDeal();
 /**************************************    SendData    **************************************/
-    // 设置视觉需要用到的数据
-    // 设置巡航需要用到的数据       
+    // 设置巡航和视觉需要用到的数据       
     NavSetMessage(chassis_fetch_data.real_vx,chassis_fetch_data.real_vy,gimbal_fetch_data.gimbal_imu_data.Yaw,chassis_fetch_data.Occupation
                     ,chassis_fetch_data.remain_HP,chassis_fetch_data.self_infantry_HP,chassis_fetch_data.self_hero_HP
                     ,chassis_fetch_data.enemy_color,chassis_fetch_data.enemy_infantry_HP,chassis_fetch_data.enemy_hero_HP
@@ -531,5 +525,5 @@ void RobotCMDTask()
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
     // 双板通信
-    CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
+    BoardCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
 }

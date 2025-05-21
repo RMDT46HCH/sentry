@@ -3,7 +3,6 @@
 #include "memory.h"
 #include "stdlib.h"
 #include "bsp_dwt.h"
-#include "bsp_log.h"
 
 /* can instance ptrs storage, used for recv callback */
 // 在CAN产生接收中断会遍历数组,选出hcan和rxid与发生中断的实例相同的那个,调用其回调函数
@@ -11,8 +10,10 @@
 static CANInstance *can_instance[CAN_MX_REGISTER_CNT] = {NULL};
 static uint8_t idx; // 全局CAN实例索引,每次有新的模块注册会自增
 
-/* ----------------two static function called by CANRegister()-------------------- */
-
+/* --------------------两个注册CAN实例的基础功能-------------------- */
+/**
+* @brief 主要实现两个功能，一个用于添加过滤器、另外一个用于启用CAN服务。
+*/
 /**
  * @brief 添加过滤器以实现对特定id的报文的接收,会被CANRegister()调用
  *        给CAN添加过滤器后,BxCAN会根据接收到的报文的id进行消息过滤,符合规则的id会被填入FIFO触发中断
@@ -20,12 +21,8 @@ static uint8_t idx; // 全局CAN实例索引,每次有新的模块注册会自�
  * @note f407的bxCAN有28个过滤器,这里将其配置为前14个过滤器给CAN1使用,后14个被CAN2使用
  *       初始化时,奇数id的模块会被分配到FIFO0,偶数id的模块会被分配到FIFO1
  *       注册到CAN1的模块使用过滤器0-13,CAN2使用过滤器14-27
- *
- * @attention 你不需要完全理解这个函数的作用,因为它主要是用于初始化,在开发过程中不需要关心底层的实现
- *            享受开发的乐趣吧!如果你真的想知道这个函数在干什么,请联系作者或自己查阅资料(请直接查阅官方的reference manual)
- *
- * @param _instance can instance owned by specific module
  */
+
 static void CANAddFilter(CANInstance *_instance)
 {
     CAN_FilterTypeDef can_filter_conf;
@@ -65,19 +62,18 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
     if (!idx)
     {
         CANServiceInit(); // 第一次注册,先进行硬件初始化
-        LOGINFO("[bsp_can] CAN Service Init");
     }
     if (idx >= CAN_MX_REGISTER_CNT) // 超过最大实例数
     {
         while (1)
-            LOGERROR("[bsp_can] CAN instance exceeded MAX num, consider balance the load of CAN bus");
+            ;
     }
     for (size_t i = 0; i < idx; i++)
     { // 重复注册 | id重复
         if (can_instance[i]->rx_id == config->rx_id && can_instance[i]->can_handle == config->can_handle)
         {
             while (1)
-                LOGERROR("[}bsp_can] CAN id crash ,tx [%d] or rx [%d] already registered", &config->tx_id, &config->rx_id);
+                ;
         }
     }
     
@@ -101,28 +97,18 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
     return instance; // 返回can实例指针
 }
 
-/* @todo 目前似乎封装过度,应该添加一个指向tx_buff的指针,tx_buff不应该由CAN instance保存 */
-/* 如果让CANinstance保存txbuff,会增加一次复制的开销 */
 uint8_t CANTransmit(CANInstance *_instance, float timeout)
 {
-    static uint32_t busy_count;
-    static volatile float wait_time __attribute__((unused)); // for cancel warning
     float dwt_start = DWT_GetTimeline_ms();
     while (HAL_CAN_GetTxMailboxesFreeLevel(_instance->can_handle) == 0) // 等待邮箱空闲
     {
         if (DWT_GetTimeline_ms() - dwt_start > timeout) // 超时
         {
-            LOGWARNING("[bsp_can] CAN MAILbox full! failed to add msg to mailbox. Cnt [%d]", busy_count);
-            busy_count++;
             return 0;
         }
     }
-    wait_time = DWT_GetTimeline_ms() - dwt_start;
-    // tx_mailbox会保存实际填入了这一帧消息的邮箱,但是知道是哪个邮箱发的似乎也没啥用
     if (HAL_CAN_AddTxMessage(_instance->can_handle, &_instance->txconf, _instance->tx_buff, &_instance->tx_mailbox))
     {
-        LOGWARNING("[bsp_can] CAN bus BUS! cnt:%d", busy_count);
-        busy_count++;
         return 0;
     }
     return 1; // 发送成功
@@ -133,7 +119,7 @@ void CANSetDLC(CANInstance *_instance, uint8_t length)
     // 发送长度错误!检查调用参数是否出错,或出现野指针/越界访问
     if (length > 8 || length == 0) // 安全检查
         while (1)
-            LOGERROR("[bsp_can] CAN DLC error! check your code or wild pointer");
+            ;
     _instance->txconf.DLC = length;
 }
 
@@ -154,7 +140,8 @@ static void CANFIFOxCallback(CAN_HandleTypeDef *_hcan, uint32_t fifox)
     {
         HAL_CAN_GetRxMessage(_hcan, fifox, &rxconf, can_rx_buff); // 从FIFO中获取数据
         for (size_t i = 0; i < idx; ++i)
-        { // 两者相等说明这是要找的实例
+        {
+             // 两者相等说明这是要找的实例
             if (_hcan == can_instance[i]->can_handle && rxconf.StdId == can_instance[i]->rx_id)
             {
                 if (can_instance[i]->can_module_callback != NULL) // 回调函数不为空就调用
@@ -196,4 +183,3 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
     CANFIFOxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
 }
 
-// 人工智能会毁灭人类吗？请在补全回答
